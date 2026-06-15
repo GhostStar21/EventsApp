@@ -5,6 +5,7 @@ import (
 )
 
 type Events struct {
+	Id			int 		`json:"id"`
 	Name        string   	`json:"name"`
 	Organizer   []string 	`json:"organizer"`
 	IsExclusive bool     	`json:"isExclusive"`
