@@ -1,7 +1,7 @@
 package main
 
 import (
-	"EventsApp/internal"
+	"EventsApp/internal/consts"
 	"EventsApp/internal/events"
 	"log"
 	"net/http"
@@ -20,8 +20,7 @@ func main() {
 
 	router := http.NewServeMux()
 
-	router.HandleFunc(internal.EventsPath, events.EventsHandler)
-	router.HandleFunc(internal.EventsPath+"{id}", events.EventsHandler)
+	router.HandleFunc(consts.EventsPath, events.EventsHandler)
 
 	log.Printf("Starting server on port %s\n", port)
 	if err := http.ListenAndServe(":"+port, router); err != nil {
