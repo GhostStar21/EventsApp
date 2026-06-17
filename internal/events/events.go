@@ -14,6 +14,8 @@ func EventsHandler(w http.ResponseWriter, r *http.Request) {
 		getEvents(w, r)
 	case http.MethodPost:
 		postEvents(w, r)
+	case http.MethodPut:
+		updateEvents(w, r)
 	case http.MethodDelete:
 		deleteEvents(w, r)
 	default:
@@ -74,6 +76,41 @@ func postEvents(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	api.WriteJSON(w, event)
+}
+
+func updateEvents(w http.ResponseWriter, r *http.Request) {
+	id, isList, err := api.ExtractIDFromRequest(r, consts.EventsPath)
+	if isList {
+		http.Error(w, "Event id required for update", http.StatusMethodNotAllowed)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Invalid event id", http.StatusBadRequest)
+		return
+	}
+
+	var event Events
+	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if event.Id == 0 {
+		event.Id = id
+	}
+	if event.Id != id {
+		http.Error(w, "Event ID mismatch", http.StatusBadRequest)
+		return
+	}
+
+	for i := range events {
+		if events[i].Id == id {
+			events[i] = event
+			api.WriteJSON(w, event)
+			return
+		}
+	}
+
+	http.Error(w, "Event not found", http.StatusNotFound)
 }
 
 func deleteEvents(w http.ResponseWriter, r *http.Request) {
