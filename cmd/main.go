@@ -3,10 +3,11 @@ package main
 import (
 	"EventsApp/internal/consts"
 	"EventsApp/internal/events"
+	"EventsApp/internal/organizers"
+	"EventsApp/internal/users"
 	"log"
 	"net/http"
 	"os"
-
 )
 
 func main() {
@@ -21,6 +22,8 @@ func main() {
 	router := http.NewServeMux()
 
 	router.HandleFunc(consts.EventsPath, events.EventsHandler)
+	router.HandleFunc(consts.UsersPath, users.UsersHandler)
+	router.HandleFunc(consts.OrganizersPath, organizers.OrganizersHandler)
 
 	log.Printf("Starting server on port %s\n", port)
 	if err := http.ListenAndServe(":"+port, router); err != nil {
