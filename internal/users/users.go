@@ -14,6 +14,8 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		getUsers(w, r)
 	case http.MethodPost:
 		postUsers(w, r)
+	case http.MethodPut:
+		updateUsers(w, r)
 	case http.MethodDelete:
 		deleteUsers(w, r)
 	default:
@@ -70,6 +72,41 @@ func postUsers(w http.ResponseWriter, r *http.Request) {
 	users = append(users, u)
 	w.WriteHeader(http.StatusCreated)
 	api.WriteJSON(w, u)
+}
+
+func updateUsers(w http.ResponseWriter, r *http.Request) {
+	id, isList, err := api.ExtractIDFromRequest(r, consts.UsersPath)
+	if isList {
+		http.Error(w, "User id required for update", http.StatusMethodNotAllowed)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	var u User
+	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if u.Id == 0 {
+		u.Id = id
+	}
+	if u.Id != id {
+		http.Error(w, "User ID mismatch", http.StatusBadRequest)
+		return
+	}
+
+	for i := range users {
+		if users[i].Id == id {
+			users[i] = u
+			api.WriteJSON(w, u)
+			return
+		}
+	}
+
+	http.Error(w, "User not found", http.StatusNotFound)
 }
 
 func deleteUsers(w http.ResponseWriter, r *http.Request) {
