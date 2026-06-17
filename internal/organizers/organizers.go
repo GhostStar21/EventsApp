@@ -14,6 +14,8 @@ func OrganizersHandler(w http.ResponseWriter, r *http.Request) {
 		getOrganizer(w, r)
 	case http.MethodPost:
 		postOrganizer(w, r)
+	case http.MethodPut:
+		updateOrganizer(w, r)
 	case http.MethodDelete:
 		deleteOrganizer(w, r)
 	default:
@@ -68,6 +70,41 @@ func postOrganizer(w http.ResponseWriter, r *http.Request) {
 	organizers = append(organizers, o)
 	w.WriteHeader(http.StatusCreated)
 	api.WriteJSON(w, o)
+}
+
+func updateOrganizer(w http.ResponseWriter, r *http.Request) {
+	id, isList, err := api.ExtractIDFromRequest(r, consts.OrganizersPath)
+	if isList {
+		http.Error(w, "Organizer id required for update", http.StatusMethodNotAllowed)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Invalid organizer id", http.StatusBadRequest)
+		return
+	}
+
+	var o Organizer
+	if err := json.NewDecoder(r.Body).Decode(&o); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if o.Id == 0 {
+		o.Id = id
+	}
+	if o.Id != id {
+		http.Error(w, "Organizer ID mismatch", http.StatusBadRequest)
+		return
+	}
+
+	for i := range organizers {
+		if organizers[i].Id == id {
+			organizers[i] = o
+			api.WriteJSON(w, o)
+			return
+		}
+	}
+
+	http.Error(w, "Organizer not found", http.StatusNotFound)
 }
 
 func deleteOrganizer(w http.ResponseWriter, r *http.Request) {
