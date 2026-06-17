@@ -7,7 +7,6 @@ import (
 type Events struct {
 	Id			int 		`json:"id"`
 	Name        string   	`json:"name"`
-	Organizer   []string 	`json:"organizer"`
 	IsExclusive bool     	`json:"isExclusive"`
 	Date  		time.Time 	`json:"date"`
 	Time 		time.Time 	`json:"time"`
@@ -16,3 +15,7 @@ type Events struct {
 	// Keywords 	[]string 	`json:"keywords"` 	//TODO: do we have this or? Could be good for potential searches?
 }
 
+type EventOrganizer struct {
+    EventID     int
+    OrganizerID int
+}

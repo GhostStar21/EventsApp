@@ -8,7 +8,6 @@ var events = []Events{
 	{
 		Id:          1,
 		Name:        "All dress party",
-		Organizer:   []string{"Login", "Darling"},
 		IsExclusive: false,
 		Date:        time.Date(2026, time.June, 20, 0, 0, 0, 0, time.UTC),
 		Time:        time.Date(0, 1, 1, 18, 30, 0, 0, time.UTC),
@@ -18,7 +17,6 @@ var events = []Events{
 	{
 		Id:          2,
 		Name:        "Halloween party",
-		Organizer:   []string{"Login"},
 		IsExclusive: false,
 		Date:        time.Date(2026, time.June, 21, 0, 0, 0, 0, time.UTC),
 		Time:        time.Date(0, 1, 1, 18, 30, 0, 0, time.UTC),
