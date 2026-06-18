@@ -4,9 +4,16 @@ import (
 	"EventsApp/internal/api"
 	"EventsApp/internal/consts"
 	"encoding/json"
-	"log"
 	"net/http"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+var db *pgxpool.Pool
+
+func SetDB(pool *pgxpool.Pool) {
+	db = pool
+}
 
 func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -38,17 +45,35 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func listUsers(w http.ResponseWriter, r *http.Request) {
-	api.WriteJSON(w, users)
+	ctx := r.Context()
+	rows, err := db.Query(ctx, "SELECT id, name FROM users ORDER BY id")
+	if err != nil {
+		http.Error(w, "Failed to query users", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var out []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.Id, &u.Name); err != nil {
+			http.Error(w, "Failed to scan user", http.StatusInternalServerError)
+			return
+		}
+		out = append(out, u)
+	}
+	api.WriteJSON(w, out)
 }
 
 func getSingleUser(w http.ResponseWriter, r *http.Request, id int) {
-	for _, user := range users {
-		if user.Id == id {
-			api.WriteJSON(w, user)
-			return
-		}
+	ctx := r.Context()
+	var u User
+	err := db.QueryRow(ctx, "SELECT id, name FROM users WHERE id=$1", id).Scan(&u.Id, &u.Name)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
 	}
-	http.Error(w, "User not found", http.StatusNotFound)
+	api.WriteJSON(w, u)
 }
 
 func postUsers(w http.ResponseWriter, r *http.Request) {
@@ -57,19 +82,14 @@ func postUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-
-	log.Println("Received POST Request")
-
-	if u.Id == 0 {
-		max := 0
-		for _, ex := range users {
-			if ex.Id > max {
-				max = ex.Id
-			}
-		}
-		u.Id = max + 1
+	ctx := r.Context()
+	var id int
+	err := db.QueryRow(ctx, "INSERT INTO users (name) VALUES ($1) RETURNING id", u.Name).Scan(&id)
+	if err != nil {
+		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		return
 	}
-	users = append(users, u)
+	u.Id = id
 	w.WriteHeader(http.StatusCreated)
 	api.WriteJSON(w, u)
 }
@@ -97,22 +117,23 @@ func updateUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "User ID mismatch", http.StatusBadRequest)
 		return
 	}
-
-	for i := range users {
-		if users[i].Id == id {
-			users[i] = u
-			api.WriteJSON(w, u)
-			return
-		}
+	ctx := r.Context()
+	cmdTag, err := db.Exec(ctx, "UPDATE users SET name=$1 WHERE id=$2", u.Name, u.Id)
+	if err != nil || cmdTag.RowsAffected() == 0 {
+		http.Error(w, "Failed to update user", http.StatusInternalServerError)
+		return
 	}
-
-	http.Error(w, "User not found", http.StatusNotFound)
+	api.WriteJSON(w, u)
 }
 
 func deleteUsers(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.UsersPath)
 	if isList {
-		users = []User{}
+		ctx := r.Context()
+		if _, err := db.Exec(ctx, "DELETE FROM users"); err != nil {
+			http.Error(w, "Failed to delete users", http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -120,12 +141,11 @@ func deleteUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid user id", http.StatusBadRequest)
 		return
 	}
-	for i, u := range users {
-		if u.Id == id {
-			users = append(users[:i], users[i+1:]...)
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
+	ctx := r.Context()
+	cmdTag, err := db.Exec(ctx, "DELETE FROM users WHERE id=$1", id)
+	if err != nil || cmdTag.RowsAffected() == 0 {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
 	}
-	http.Error(w, "User not found", http.StatusNotFound)
+	w.WriteHeader(http.StatusNoContent)
 }

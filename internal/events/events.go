@@ -4,9 +4,17 @@ import (
 	"EventsApp/internal/api"
 	"EventsApp/internal/consts"
 	"encoding/json"
-	"log"
 	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+var db *pgxpool.Pool
+
+func SetDB(pool *pgxpool.Pool) {
+	db = pool
+}
 
 func EventsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -38,42 +46,60 @@ func getEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func listEvents(w http.ResponseWriter, r *http.Request) {
-	api.WriteJSON(w, events)
+	ctx := r.Context()
+	rows, err := db.Query(ctx, "SELECT id, name, is_exclusive, event_date, event_time, location, description FROM events ORDER BY id")
+	if err != nil {
+		http.Error(w, "Failed to query events", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var out []Events
+	for rows.Next() {
+		var e Events
+		var date time.Time
+		var tm time.Time
+		if err := rows.Scan(&e.Id, &e.Name, &e.IsExclusive, &date, &tm, &e.Location, &e.Description); err != nil {
+			http.Error(w, "Failed to scan event", http.StatusInternalServerError)
+			return
+		}
+		e.Date = date
+		e.Time = tm
+		out = append(out, e)
+	}
+	api.WriteJSON(w, out)
 }
 
 func getSingleEvent(w http.ResponseWriter, r *http.Request, id int) {
-	for _, event := range events {
-		if event.Id == id {
-			api.WriteJSON(w, event)
-			return
-		}
+	ctx := r.Context()
+	var e Events
+	var date time.Time
+	var tm time.Time
+	err := db.QueryRow(ctx, "SELECT id, name, is_exclusive, event_date, event_time, location, description FROM events WHERE id=$1", id).Scan(&e.Id, &e.Name, &e.IsExclusive, &date, &tm, &e.Location, &e.Description)
+	if err != nil {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
 	}
-	http.Error(w, "Event not found", http.StatusNotFound)
+	e.Date = date
+	e.Time = tm
+	api.WriteJSON(w, e)
 }
 
 func postEvents(w http.ResponseWriter, r *http.Request) {
 	var event Events
-
 	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-
-	log.Println("Received POST Request")
-
-	// assign ID if not provided
-	if event.Id == 0 {
-		max := 0
-		for _, e := range events {
-			if e.Id > max {
-				max = e.Id
-			}
-		}
-		event.Id = max + 1
+	ctx := r.Context()
+	var id int
+	err := db.QueryRow(ctx, "INSERT INTO events (name, is_exclusive, event_date, event_time, location, description) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
+		event.Name, event.IsExclusive, event.Date, event.Time, event.Location, event.Description).Scan(&id)
+	if err != nil {
+		http.Error(w, "Failed to create event", http.StatusInternalServerError)
+		return
 	}
-
-	events = append(events, event)
-
+	event.Id = id
 	w.WriteHeader(http.StatusCreated)
 	api.WriteJSON(w, event)
 }
@@ -102,21 +128,25 @@ func updateEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i := range events {
-		if events[i].Id == id {
-			events[i] = event
-			api.WriteJSON(w, event)
-			return
-		}
+	ctx := r.Context()
+	cmdTag, err := db.Exec(ctx, "UPDATE events SET name=$1, is_exclusive=$2, event_date=$3, event_time=$4, location=$5, description=$6 WHERE id=$7",
+		event.Name, event.IsExclusive, event.Date, event.Time, event.Location, event.Description, event.Id)
+	if err != nil || cmdTag.RowsAffected() == 0 {
+		http.Error(w, "Failed to update event", http.StatusInternalServerError)
+		return
 	}
-
-	http.Error(w, "Event not found", http.StatusNotFound)
+	api.WriteJSON(w, event)
 }
 
 func deleteEvents(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.EventsPath)
 	if isList {
-		events = []Events{}
+		// delete all
+		ctx := r.Context()
+		if _, err := db.Exec(ctx, "DELETE FROM events"); err != nil {
+			http.Error(w, "Failed to delete events", http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -124,14 +154,11 @@ func deleteEvents(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid event id", http.StatusBadRequest)
 		return
 	}
-
-	for i, event := range events {
-		if event.Id == id {
-			events = append(events[:i], events[i+1:]...)
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
+	ctx := r.Context()
+	cmdTag, err := db.Exec(ctx, "DELETE FROM events WHERE id=$1", id)
+	if err != nil || cmdTag.RowsAffected() == 0 {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
 	}
-
-	http.Error(w, "Event not found", http.StatusNotFound)
+	w.WriteHeader(http.StatusNoContent)
 }
