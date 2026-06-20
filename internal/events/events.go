@@ -32,6 +32,19 @@ func EventsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func deleteEvents(w http.ResponseWriter, r *http.Request) {
+	id, isList, err := api.ExtractIDFromRequest(r, consts.EventsPath)
+		if isList {
+			deleteAllEvents(w, r)
+			return
+		}
+		if err != nil {
+			http.Error(w, "Invalid event id", http.StatusBadRequest)
+			return
+		}
+		deleteSingleEvent(w, r, id)
+}
+
 func getEvents(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.EventsPath)
 	if isList {
@@ -138,22 +151,16 @@ func updateEvents(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, event)
 }
 
-func deleteEvents(w http.ResponseWriter, r *http.Request) {
-	id, isList, err := api.ExtractIDFromRequest(r, consts.EventsPath)
-	if isList {
-		// delete all
-		ctx := r.Context()
-		if _, err := db.Exec(ctx, "DELETE FROM events"); err != nil {
-			http.Error(w, "Failed to delete events", http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
+func deleteAllEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if _, err := db.Exec(ctx, "DELETE FROM events"); err != nil {
+		http.Error(w, "Failed to delete events", http.StatusInternalServerError)
 		return
 	}
-	if err != nil {
-		http.Error(w, "Invalid event id", http.StatusBadRequest)
-		return
-	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func deleteSingleEvent(w http.ResponseWriter, r *http.Request, id int) {
 	ctx := r.Context()
 	cmdTag, err := db.Exec(ctx, "DELETE FROM events WHERE id=$1", id)
 	if err != nil || cmdTag.RowsAffected() == 0 {
