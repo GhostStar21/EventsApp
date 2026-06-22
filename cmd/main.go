@@ -1,6 +1,7 @@
 package main
 
 import (
+	"EventsApp/internal/auth"
 	"EventsApp/internal/consts"
 	"EventsApp/internal/events"
 	"EventsApp/internal/organizers"
@@ -44,8 +45,11 @@ func main() {
 
 	router := http.NewServeMux()
 
+	router.HandleFunc(consts.RegisterPath, auth.Register(db))
+	router.HandleFunc(consts.LoginPath, auth.Login(db))
+	router.HandleFunc(consts.MePath, auth.AuthMiddleware(users.MeHandler))
 	router.HandleFunc(consts.EventsPath, events.EventsHandler)
-	router.HandleFunc(consts.UsersPath, users.UsersHandler)
+	router.HandleFunc(consts.UsersPath, auth.AuthMiddleware(users.UsersHandler))
 	router.HandleFunc(consts.OrganizersPath, organizers.OrganizersHandler)
 
 	log.Printf("Starting server on port %s\n", port)
