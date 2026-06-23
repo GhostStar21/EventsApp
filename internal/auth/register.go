@@ -14,6 +14,7 @@ type RegisterRequest struct {
 	Password string `json:"password"`
 }
 
+// Registers a user, storing their credentials in the database
 func Register(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req RegisterRequest
@@ -22,12 +23,14 @@ func Register(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		// Hash the password
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
 			http.Error(w, "Error hashing password", http.StatusInternalServerError)
 			return
 		}
 
+		// Store the values into the database
 		ctx := r.Context()
 		_, err = db.Exec(ctx, `
             INSERT INTO users (name, email, password_hash)

@@ -8,6 +8,7 @@ import (
     "github.com/golang-jwt/jwt/v5"
 )
 
+// 
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
 
@@ -17,8 +18,10 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
             return
         }
 
+        // Remove the "Bearer" prefix
         tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
+        // Parse and verify the token
         token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
             return jwtSecret, nil
         })
@@ -36,6 +39,7 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
         ctx := context.WithValue(r.Context(), "userID", userID)
         ctx = context.WithValue(ctx, "role", role)
 
+        // Continue as authentication is complete
         next(w, r.WithContext(ctx))
     }
 }

@@ -4,17 +4,19 @@ import (
 	"EventsApp/internal/api"
 	"EventsApp/internal/consts"
 	"encoding/json"
-	"net/http"
-
 	"github.com/jackc/pgx/v5/pgxpool"
+	"net/http"
 )
+
 
 var db *pgxpool.Pool
 
+// Sets the global database connection pool.
 func SetDB(pool *pgxpool.Pool) {
 	db = pool
 }
 
+// Handles different HTTP methods.
 func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -31,6 +33,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Function that ensures that a user only can access its own account.
 func MeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	uidVal := ctx.Value("userID")
@@ -61,6 +64,7 @@ func MeHandler(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, u)
 }
 
+// Lists either all users or a single user (admin function).
 func getUsers(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.UsersPath)
 	if isList {
@@ -74,6 +78,7 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 	getSingleUser(w, r, id)
 }
 
+// Lists all users in the database.
 func listUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	rows, err := db.Query(ctx, "SELECT id, name FROM users ORDER BY id")
@@ -83,6 +88,7 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+	// User struct-array to store the database elements read.
 	var out []User
 	for rows.Next() {
 		var u User
@@ -95,6 +101,7 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, out)
 }
 
+// List a single user based on the id provided.
 func getSingleUser(w http.ResponseWriter, r *http.Request, id int) {
 	ctx := r.Context()
 	var u User
@@ -106,6 +113,7 @@ func getSingleUser(w http.ResponseWriter, r *http.Request, id int) {
 	api.WriteJSON(w, u)
 }
 
+// Register a user.
 func postUsers(w http.ResponseWriter, r *http.Request) {
 	var u User
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
@@ -124,6 +132,7 @@ func postUsers(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, u)
 }
 
+// Update / make changes to user data.
 func updateUsers(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.UsersPath)
 	if isList {
@@ -143,6 +152,7 @@ func updateUsers(w http.ResponseWriter, r *http.Request) {
 	if u.Id == 0 {
 		u.Id = id
 	}
+	// Check if the URL ID matches the ID of the element read from the database
 	if u.Id != id {
 		http.Error(w, "User ID mismatch", http.StatusBadRequest)
 		return
@@ -156,21 +166,32 @@ func updateUsers(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, u)
 }
 
+// Delete all or a single user in the database.
 func deleteUsers(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.UsersPath)
 	if isList {
-		ctx := r.Context()
-		if _, err := db.Exec(ctx, "DELETE FROM users"); err != nil {
-			http.Error(w, "Failed to delete users", http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
+		deleteAllUsers(w, r)
 		return
 	}
 	if err != nil {
 		http.Error(w, "Invalid user id", http.StatusBadRequest)
 		return
 	}
+	deleteSingleUser(w, r, id)
+}
+
+// Delete all users from the database.
+func deleteAllUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+		if _, err := db.Exec(ctx, "DELETE FROM users"); err != nil {
+			http.Error(w, "Failed to delete users", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+}
+
+// Delete a single user from the database.
+func deleteSingleUser(w http.ResponseWriter, r *http.Request, id int) {
 	ctx := r.Context()
 	cmdTag, err := db.Exec(ctx, "DELETE FROM users WHERE id=$1", id)
 	if err != nil || cmdTag.RowsAffected() == 0 {

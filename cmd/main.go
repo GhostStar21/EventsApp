@@ -15,6 +15,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Main function that handles endpoints and initiates/connects to database and port.
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("No .env file loaded: %v", err)
@@ -28,6 +29,7 @@ func main() {
 		log.Println("$PORT has been set: ", port)
 	}
 
+	// Connect to database
 	ctx := context.Background()
 	db, err := postgres.NewPool(ctx)
 	if err != nil {
@@ -43,8 +45,10 @@ func main() {
 
 	log.Println("Successfully connected to database")
 
+	// Initiate router
 	router := http.NewServeMux()
 
+	// Handle the various endpoints
 	router.HandleFunc(consts.RegisterPath, auth.Register(db))
 	router.HandleFunc(consts.LoginPath, auth.Login(db))
 	router.HandleFunc(consts.MePath, auth.AuthMiddleware(users.MeHandler))

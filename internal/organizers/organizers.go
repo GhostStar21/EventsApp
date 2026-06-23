@@ -11,10 +11,12 @@ import (
 
 var db *pgxpool.Pool
 
+// Sets the global database connection pool.
 func SetDB(pool *pgxpool.Pool) {
 	db = pool
 }
 
+// Handles different HTTP methods.
 func OrganizersHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -31,6 +33,42 @@ func OrganizersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Deletes an organizer.
+func deleteOrganizer(w http.ResponseWriter, r *http.Request) {
+	id, isList, err := api.ExtractIDFromRequest(r, consts.OrganizersPath)
+	if isList {
+		deleteAllOrganizers(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Invalid organizer id", http.StatusBadRequest)
+		return
+	}
+	deleteSingleOrganizer(w, r, id)
+}
+
+// Deletes all organizers (only available for admin).
+func deleteAllOrganizers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+		if _, err := db.Exec(ctx, "DELETE FROM organizers"); err != nil {
+			http.Error(w, "Failed to delete organizers", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+}
+
+// Deletes a single event.
+func deleteSingleOrganizer(w http.ResponseWriter, r *http.Request, id int) {
+	ctx := r.Context()
+	cmdTag, err := db.Exec(ctx, "DELETE FROM organizers WHERE id=$1", id)
+	if err != nil || cmdTag.RowsAffected() == 0 {
+		http.Error(w, "Organizer not found", http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Lists either all örganizers or a single organizer.
 func getOrganizer(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.OrganizersPath)
 	if isList {
@@ -44,6 +82,7 @@ func getOrganizer(w http.ResponseWriter, r *http.Request) {
 	getSingleOrganizer(w, r, id)
 }
 
+// Lists all organizers that exist in the database.
 func listOrganizers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	rows, err := db.Query(ctx, "SELECT id, name, org_number FROM organizers ORDER BY id")
@@ -53,6 +92,7 @@ func listOrganizers(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+	// Organizers struct-array to store the database elements read.
 	var out []Organizer
 	for rows.Next() {
 		var o Organizer
@@ -65,6 +105,7 @@ func listOrganizers(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, out)
 }
 
+// Get a single organizer from the id
 func getSingleOrganizer(w http.ResponseWriter, r *http.Request, id int) {
 	ctx := r.Context()
 	var o Organizer
@@ -76,6 +117,7 @@ func getSingleOrganizer(w http.ResponseWriter, r *http.Request, id int) {
 	api.WriteJSON(w, o)
 }
 
+// Register an organizer into the database.
 func postOrganizer(w http.ResponseWriter, r *http.Request) {
 	var o Organizer
 	if err := json.NewDecoder(r.Body).Decode(&o); err != nil {
@@ -94,6 +136,7 @@ func postOrganizer(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, o)
 }
 
+// Update the event / make changes in the organizer data.
 func updateOrganizer(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.OrganizersPath)
 	if isList {
@@ -113,6 +156,8 @@ func updateOrganizer(w http.ResponseWriter, r *http.Request) {
 	if o.Id == 0 {
 		o.Id = id
 	}
+
+	// Check if the URL ID matches the ID of the element read from the database
 	if o.Id != id {
 		http.Error(w, "Organizer ID mismatch", http.StatusBadRequest)
 		return
@@ -126,26 +171,3 @@ func updateOrganizer(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, o)
 }
 
-func deleteOrganizer(w http.ResponseWriter, r *http.Request) {
-	id, isList, err := api.ExtractIDFromRequest(r, consts.OrganizersPath)
-	if isList {
-		ctx := r.Context()
-		if _, err := db.Exec(ctx, "DELETE FROM organizers"); err != nil {
-			http.Error(w, "Failed to delete organizers", http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	if err != nil {
-		http.Error(w, "Invalid organizer id", http.StatusBadRequest)
-		return
-	}
-	ctx := r.Context()
-	cmdTag, err := db.Exec(ctx, "DELETE FROM organizers WHERE id=$1", id)
-	if err != nil || cmdTag.RowsAffected() == 0 {
-		http.Error(w, "Organizer not found", http.StatusNotFound)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}

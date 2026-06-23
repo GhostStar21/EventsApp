@@ -4,18 +4,19 @@ import (
 	"EventsApp/internal/api"
 	"EventsApp/internal/consts"
 	"encoding/json"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var db *pgxpool.Pool
 
+// Sets the global database connection pool.
 func SetDB(pool *pgxpool.Pool) {
 	db = pool
 }
 
+// Handles different HTTP methods.
 func EventsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -32,6 +33,7 @@ func EventsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Deletes an event.
 func deleteEvents(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.EventsPath)
 		if isList {
@@ -45,6 +47,29 @@ func deleteEvents(w http.ResponseWriter, r *http.Request) {
 		deleteSingleEvent(w, r, id)
 }
 
+// Deletes all events (only available for admin).
+func deleteAllEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if _, err := db.Exec(ctx, "DELETE FROM events"); err != nil {
+		http.Error(w, "Failed to delete events", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Deletes a single event.
+func deleteSingleEvent(w http.ResponseWriter, r *http.Request, id int) {
+	ctx := r.Context()
+
+	cmdTag, err := db.Exec(ctx, "DELETE FROM events WHERE id=$1", id)
+	if err != nil || cmdTag.RowsAffected() == 0 {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Lists either all events or a single event.
 func getEvents(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.EventsPath)
 	if isList {
@@ -58,6 +83,7 @@ func getEvents(w http.ResponseWriter, r *http.Request) {
 	getSingleEvent(w, r, id)
 }
 
+// Lists all events that exist in the database.
 func listEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	rows, err := db.Query(ctx, "SELECT id, name, is_exclusive, event_date, event_time, location, description FROM events ORDER BY id")
@@ -67,6 +93,7 @@ func listEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+	// Events struct-array to store the database elements read.
 	var out []Events
 	for rows.Next() {
 		var e Events
@@ -83,6 +110,7 @@ func listEvents(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, out)
 }
 
+// Get a single event from the id
 func getSingleEvent(w http.ResponseWriter, r *http.Request, id int) {
 	ctx := r.Context()
 	var e Events
@@ -98,6 +126,7 @@ func getSingleEvent(w http.ResponseWriter, r *http.Request, id int) {
 	api.WriteJSON(w, e)
 }
 
+// Register an event into the database.
 func postEvents(w http.ResponseWriter, r *http.Request) {
 	var event Events
 	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
@@ -117,6 +146,7 @@ func postEvents(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, event)
 }
 
+// Update the event / make changes in the event.
 func updateEvents(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.EventsPath)
 	if isList {
@@ -133,9 +163,12 @@ func updateEvents(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+
 	if event.Id == 0 {
 		event.Id = id
 	}
+
+	// Check if the URL ID matches the ID of the element read from the database
 	if event.Id != id {
 		http.Error(w, "Event ID mismatch", http.StatusBadRequest)
 		return
@@ -151,21 +184,4 @@ func updateEvents(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, event)
 }
 
-func deleteAllEvents(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	if _, err := db.Exec(ctx, "DELETE FROM events"); err != nil {
-		http.Error(w, "Failed to delete events", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
 
-func deleteSingleEvent(w http.ResponseWriter, r *http.Request, id int) {
-	ctx := r.Context()
-	cmdTag, err := db.Exec(ctx, "DELETE FROM events WHERE id=$1", id)
-	if err != nil || cmdTag.RowsAffected() == 0 {
-		http.Error(w, "Event not found", http.StatusNotFound)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}

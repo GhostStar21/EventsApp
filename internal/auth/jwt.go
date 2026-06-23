@@ -9,6 +9,7 @@ import (
 
 var jwtSecret = []byte(os.Getenv("SECRET_KEY"))
 
+// Generates a signed JWT token for the specified user.
 func GenerateToken(userID int, role string) (string, error) {
     token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
         "userId": userID,
