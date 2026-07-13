@@ -7,20 +7,22 @@ import (
 	"EventsApp/internal/organizers"
 	"EventsApp/internal/postgres"
 	"EventsApp/internal/users"
+	"EventsApp/internal/api"
 	"context"
 	"log"
 	"net/http"
 	"os"
-
 	"github.com/joho/godotenv"
 )
+
+
 
 // Main function that handles endpoints and initiates/connects to database and port.
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("No .env file loaded: %v", err)
 	}
-
+	
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Println("$PORT has not been set. Default: 8080")
@@ -57,7 +59,7 @@ func main() {
 	router.HandleFunc(consts.OrganizersPath, organizers.OrganizersHandler)
 
 	log.Printf("Starting server on port %s\n", port)
-	if err := http.ListenAndServe(":"+port, router); err != nil {
+	if err := http.ListenAndServe(":"+port, api.EnableCORS(router)); err != nil {
 		log.Printf("Failed to start server: %v", err)
 	}
 }

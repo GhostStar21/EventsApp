@@ -17,16 +17,20 @@ type RegisterRequest struct {
 // Registers a user, storing their credentials in the database
 func Register(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
 		var req RegisterRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Invalid JSON"})
 			return
 		}
 
 		// Hash the password
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
-			http.Error(w, "Error hashing password", http.StatusInternalServerError)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Error hashing password"})
 			return
 		}
 
@@ -38,10 +42,12 @@ func Register(db *pgxpool.Pool) http.HandlerFunc {
         `, req.Name, req.Email, string(hash))
 
 		if err != nil {
-			http.Error(w, "User already exists", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"message": "User already exists"})
 			return
 		}
 
 		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]string{"message": "User created"})
 	}
 }

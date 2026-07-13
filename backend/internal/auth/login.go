@@ -3,10 +3,10 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
-
 
 type LoginRequest struct {
 	Email    string `json:"email"`
@@ -16,9 +16,12 @@ type LoginRequest struct {
 // Checks if a user is registered and if email and password matches the database
 func Login(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
 		var req LoginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Invalid JSON"})
 			return
 		}
 
@@ -36,20 +39,23 @@ func Login(db *pgxpool.Pool) http.HandlerFunc {
         `, req.Email).Scan(&id, &hash, &role)
 
 		if err != nil {
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Invalid credentials"})
 			return
 		}
 
 		// Compares the hashed input with the hashed password in the database
 		if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)); err != nil {
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Invalid credentials"})
 			return
 		}
 
 		// Generate token upon successful login
 		token, err := GenerateToken(id, role)
 		if err != nil {
-			http.Error(w, "Unable to generate token", http.StatusInternalServerError)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to generate token"})
 			return
 		}
 
