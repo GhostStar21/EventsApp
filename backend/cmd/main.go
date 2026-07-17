@@ -1,28 +1,27 @@
 package main
 
 import (
+	"EventsApp/internal/api"
 	"EventsApp/internal/auth"
 	"EventsApp/internal/consts"
 	"EventsApp/internal/events"
 	"EventsApp/internal/organizers"
 	"EventsApp/internal/postgres"
 	"EventsApp/internal/users"
-	"EventsApp/internal/api"
 	"context"
 	"log"
 	"net/http"
 	"os"
+
 	"github.com/joho/godotenv"
 )
-
-
 
 // Main function that handles endpoints and initiates/connects to database and port.
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("No .env file loaded: %v", err)
 	}
-	
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Println("$PORT has not been set. Default: 8080")
@@ -54,7 +53,7 @@ func main() {
 	router.HandleFunc(consts.RegisterPath, auth.Register(db))
 	router.HandleFunc(consts.LoginPath, auth.Login(db))
 	router.HandleFunc(consts.MePath, auth.AuthMiddleware(users.MeHandler))
-	router.HandleFunc(consts.EventsPath, events.EventsHandler)
+	router.HandleFunc(consts.EventsPath, auth.AuthMiddleware(events.EventsHandler))
 	router.HandleFunc(consts.UsersPath, auth.AuthMiddleware(users.UsersHandler))
 	router.HandleFunc(consts.OrganizersPath, organizers.OrganizersHandler)
 
