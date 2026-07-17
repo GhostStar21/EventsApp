@@ -1,0 +1,33 @@
+.event-card {
+  width: 300px;
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: 0.3s;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
+
+.event-card:hover {
+  transform: translateY(-5px);
+}
+
+.event-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+
+.event-card h2, .event-card p {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+.expanded {
+  width: 600px;
+}
+
+.description {
+  padding: 15px;
+}

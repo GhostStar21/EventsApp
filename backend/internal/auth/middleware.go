@@ -8,7 +8,7 @@ import (
     "github.com/golang-jwt/jwt/v5"
 )
 
-// 
+// Authenticates a user
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
 
