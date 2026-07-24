@@ -33,11 +33,10 @@ function Authentication({ setUser }) {
     setStatusMessage("");
     setIsErrorMessage(false);
 
-    console.log("Attempting login with:", formData.email, formData.password);
-
     try {
       const response = await fetch("http://localhost:8080/v1/login", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -52,18 +51,9 @@ function Authentication({ setUser }) {
 
       if (response.ok) {
         console.log("Login successful!");
-        console.log("Token:", data?.token);
-        const token = data?.token || "";
-        if (!token) {
-          throw new Error("Missing token from login response");
-        }
-
-        localStorage.setItem("token", token);
 
         const meResponse = await fetch("http://localhost:8080/v1/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include",
         });
 
         if (!meResponse.ok) {

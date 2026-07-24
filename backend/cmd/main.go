@@ -50,8 +50,11 @@ func main() {
 	router := http.NewServeMux()
 
 	// Handle the various endpoints
-	router.HandleFunc(consts.RegisterPath, auth.Register(db))
-	router.HandleFunc(consts.LoginPath, auth.Login(db))
+	router.HandleFunc(consts.RegisterPath, auth.RegisterUser(db))
+	router.HandleFunc(consts.LoginPath, auth.LoginUser(db))
+	router.HandleFunc(consts.LogoutPath, auth.LogoutUser())
+	// router.HandleFunc(consts.RegisterOrganizerPath, auth.AuthMiddleware(auth.RegisterOrganizer(db)))
+	// router.HandleFunc(consts.DemoteOrganizerPath, auth.AuthMiddleware(auth.DemoteOrganizer(db)))
 	router.HandleFunc(consts.MePath, auth.AuthMiddleware(users.MeHandler))
 	router.HandleFunc(consts.EventsPath, auth.AuthMiddleware(events.EventsHandler))
 	router.HandleFunc(consts.UsersPath, auth.AuthMiddleware(users.UsersHandler))

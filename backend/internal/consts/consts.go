@@ -6,6 +6,9 @@ const UsersPath = "/v1/users/"
 const MePath = "/v1/me"
 const RegisterPath = "/v1/register"
 const LoginPath = "/v1/login"
+const LogoutPath = "/v1/logout"
+const RegisterOrganizerPath = "/v1/register-organizer"
+const DemoteOrganizerPath = "/v1/demote-organizer"
 
 type Role string
 

@@ -21,11 +21,8 @@ function Events({ user, onLogout }) {
 
   const fetchEvents = async () => {
     try {
-      const token = localStorage.getItem("token");
       const response = await fetch("http://localhost:8080/v1/events", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (!response.ok) {

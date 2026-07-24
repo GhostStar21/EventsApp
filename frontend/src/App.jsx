@@ -8,24 +8,23 @@ function App() {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    try {
+      await fetch("http://localhost:8080/v1/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
     setUser(null);
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setLoadingUser(false);
-      return;
-    }
-
     const loadUser = async () => {
       try {
         const response = await fetch("http://localhost:8080/v1/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include",
         });
 
         if (!response.ok) {
@@ -36,7 +35,6 @@ function App() {
         setUser(userData);
       } catch (error) {
         console.error("Failed to load current user", error);
-        localStorage.removeItem("token");
         setUser(null);
       } finally {
         setLoadingUser(false);
