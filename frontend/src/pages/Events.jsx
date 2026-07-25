@@ -14,6 +14,7 @@ import "../styles/Events.css";
 function Events({ user, onLogout }) {
 
   const [events, setEvents] = useState([]);
+  const [organizer, setOrganizer] = useState(null);
 
   useEffect(() => {
     fetchEvents();
@@ -39,8 +40,25 @@ function Events({ user, onLogout }) {
   return (
     <div className="events-page">
       <div className="events-header">
-        <h1>Hva Skjer!</h1>
-        <UserPopUp name={user?.name} email={user?.email} onLogout={onLogout} />
+        <div className="events-header-left">
+          <h1>Hva Skjer!</h1>
+          {organizer && (
+            <button 
+            className="create-event-button"
+            onClick={() => console.log("Create event")}
+            >
+              Create event
+            </button>
+        )}
+        </div>
+        <UserPopUp 
+          name={user?.name} 
+          email={user?.email} 
+          onLogout={onLogout} 
+          organizer={organizer} 
+          onOrganizerChange={setOrganizer}
+          />
+          
       </div>
 
       <div className="event-grid">

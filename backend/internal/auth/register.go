@@ -3,9 +3,11 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
-	// "EventsApp/internal/consts"
+	"EventsApp/internal/consts"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
+	"errors"
 )
 
 type RegisterRequest struct {
@@ -54,78 +56,88 @@ func RegisterUser(db *pgxpool.Pool) http.HandlerFunc {
 
 // RegisterOrganizer promotes an already authenticated user to organizer status
 // only when that user exists in the organizer_member table.
-// func RegisterOrganizer(db *pgxpool.Pool) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		w.Header().Set("Content-Type", "application/json")
+func RegisterOrganizer(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 
-// 		userID, err := GetUserIDFromContext(r.Context())
-// 		if err != nil {
-// 			w.WriteHeader(http.StatusUnauthorized)
-// 			json.NewEncoder(w).Encode(map[string]string{"message": "You must be logged in to become an organizer"})
-// 			return
-// 		}
+		userID, err := GetUserIDFromContext(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"message": "You must be logged in to become an organizer"})
+			return
+		}
 
-// 		ctx := r.Context()
-// 		var membershipExists bool
-// 		err = db.QueryRow(ctx, `
-// 			SELECT EXISTS (
-// 				SELECT 1
-// 				FROM organizer_member
-// 				WHERE user_id = $1
-// 			)
-// 		`, userID).Scan(&membershipExists)
-// 		if err != nil {
-// 			w.WriteHeader(http.StatusInternalServerError)
-// 			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to verify organizer membership"})
-// 			return
-// 		}
-// 		if !membershipExists {
-// 			w.WriteHeader(http.StatusForbidden)
-// 			json.NewEncoder(w).Encode(map[string]string{"message": "You are not registered as an organizer member"})
-// 			return
-// 		}
+		ctx := r.Context()
+		var organizerID int
 
-// 		_, err = db.Exec(ctx, `
-// 			UPDATE users
-// 			SET role = $1
-// 			WHERE id = $2
-// 		`, consts.RoleOrganizer, userID)
-// 		if err != nil {
-// 			w.WriteHeader(http.StatusInternalServerError)
-// 			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to promote user to organizer"})
-// 			return
-// 		}
+		err = db.QueryRow(ctx, `
+			SELECT organizer_id
+			FROM organizer_member
+			WHERE user_id = $1
+			ORDER BY organizer_id
+			LIMIT 1
+		`, userID).Scan(&organizerID)
 
-// 		w.WriteHeader(http.StatusOK)
-// 		json.NewEncoder(w).Encode(map[string]string{"message": "User promoted to organizer"})
-// 	}
-// }
+		if errors.Is(err, pgx.ErrNoRows) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]string{
+				"message": "You are not registered as an organizer member",
+			})
+			return
+		}
 
-// // DemoteOrganizer downgrades an authenticated organizer user back to USER role.
-// func DemoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		w.Header().Set("Content-Type", "application/json")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"message": "Unable to select organizer",
+			})
+			return
+		}
 
-// 		userID, err := GetUserIDFromContext(r.Context())
-// 		if err != nil {
-// 			w.WriteHeader(http.StatusUnauthorized)
-// 			json.NewEncoder(w).Encode(map[string]string{"message": "You must be logged in"})
-// 			return
-// 		}
+		_, err = db.Exec(ctx, `
+			UPDATE users
+			SET role = $1
+			WHERE id = $2
+		`, consts.RoleOrganizer, userID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to promote user to organizer"})
+			return
+		}
 
-// 		ctx := r.Context()
-// 		_, err = db.Exec(ctx, `
-// 			UPDATE users
-// 			SET role = $1
-// 			WHERE id = $2
-// 		`, consts.RoleUser, userID)
-// 		if err != nil {
-// 			w.WriteHeader(http.StatusInternalServerError)
-// 			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to demote organizer"})
-// 			return
-// 		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": "User promoted to organizer",
+			"organizerId": organizerID,
+		})
+	}
+}
 
-// 		w.WriteHeader(http.StatusOK)
-// 		json.NewEncoder(w).Encode(map[string]string{"message": "User demoted to user"})
-// 	}
-// }
+// DemoteOrganizer downgrades an authenticated organizer user back to USER role.
+func DemoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		userID, err := GetUserIDFromContext(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"message": "You must be logged in"})
+			return
+		}
+
+		ctx := r.Context()
+		_, err = db.Exec(ctx, `
+			UPDATE users
+			SET role = $1
+			WHERE id = $2
+		`, consts.RoleUser, userID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to demote organizer"})
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"message": "User demoted to user"})
+	}
+}
