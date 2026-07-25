@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import EventCard from "../components/EventCard";
 import UserPopUp from "../components/UserPopUp.jsx";
 import "../styles/Events.css";
@@ -15,6 +16,7 @@ function Events({ user, onLogout }) {
 
   const [events, setEvents] = useState([]);
   const [organizer, setOrganizer] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchEvents();
@@ -43,9 +45,9 @@ function Events({ user, onLogout }) {
         <div className="events-header-left">
           <h1>Hva Skjer!</h1>
           {organizer && (
-            <button 
+            <button
             className="create-event-button"
-            onClick={() => console.log("Create event")}
+            onClick={() => navigate("/events/new", { state: { organizer } })}
             >
               Create event
             </button>
@@ -58,7 +60,6 @@ function Events({ user, onLogout }) {
           organizer={organizer} 
           onOrganizerChange={setOrganizer}
           />
-          
       </div>
 
       <div className="event-grid">

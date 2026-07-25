@@ -47,7 +47,7 @@ function UserPopUp({ name, email, onLogout, organizer, onOrganizerChange }) {
     
     
   } catch (error) {
-    console.error("Server error:", error);
+      console.error("Server error:", error);
   }
   
 };

@@ -184,9 +184,7 @@ function Authentication({ setUser }) {
   <>
     <h2>Welcome!</h2>
     <p>Please log in or register to continue.</p>
-    <button type="button" onClick={() => setShowLoginForm(true)}>
-      Log In
-    </button>
+    <button type="button" onClick={() => setShowLoginForm(true)}>Log In</button>
     <button type="button" onClick={() => setRegisterForm(true)}>Register</button>
   </> 
 

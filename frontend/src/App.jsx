@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Authentication from "./components/Authentication.jsx";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import Events from "./pages/Events.jsx"
+import CreateEvent from "./pages/CreateEvent.jsx"
 
 function App() {
   const [user, setUser] = useState(null);
@@ -55,7 +56,23 @@ function App() {
               loadingUser ? (
                 <div className="website full-page">Loading...</div>
               ) : user ? (
-                <div className="website full-page"><Events user={user} onLogout={handleLogout} /></div>
+                <div className="website full-page"> 
+                  <Events user={user} onLogout={handleLogout} />
+                </div>
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/events/new"
+            element={
+              loadingUser ? (
+                <div className="website full-page">Loading...</div>
+              ) : user ? (
+                <div className="website full-page">
+                  <CreateEvent />
+                </div>
               ) : (
                 <Navigate to="/" replace />
               )
