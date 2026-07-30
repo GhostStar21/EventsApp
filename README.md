@@ -27,3 +27,15 @@ If no domain or IP address is provided, then the local URL is shown by vite i.e.
 - Sign in or register an account
 - View all events returned by the backend
 
+## Roles
+
+### User
+- See all available events (or only subscribed organizers)
+- Register in events (future feature)
+- Subscribe/follow their favorite organizers
+- For a user to create an event, they must register as an organizer (both personal and official) 
+
+### Organizers
+- Create, read, update and delete their own events
+- The organizer can be controlled by multiple Users
+
