@@ -88,3 +88,85 @@
 .user-popup-logout:hover {
   background: #6d28d9;
 }
+
+.organizer-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.organizer-modal {
+  width: min(92vw, 420px);
+  background: white;
+  border-radius: 18px;
+  padding: 1.25rem;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+}
+
+.organizer-modal h3 {
+  margin: 0 0 0.6rem;
+  color: #111827;
+}
+
+.organizer-modal p {
+  margin: 0 0 1rem;
+  color: #4b5563;
+}
+
+.organizer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.organizer-form input,
+.organizer-form select {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+
+.organizer-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.organizer-submit-btn,
+.organizer-cancel-btn {
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.organizer-submit-btn {
+  background: #7c3aed;
+  color: white;
+}
+
+.organizer-cancel-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.organizer-status {
+  margin-bottom: 0.8rem;
+  font-weight: 600;
+}
+
+.organizer-status.error {
+  color: #b91c1c;
+}
+
+.organizer-status.success {
+  color: #15803d;
+}

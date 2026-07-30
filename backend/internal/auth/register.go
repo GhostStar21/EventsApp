@@ -2,12 +2,13 @@ package auth
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
+	"strings"
 	"EventsApp/internal/consts"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
-	"errors"
 )
 
 type RegisterRequest struct {
@@ -54,9 +55,43 @@ func RegisterUser(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// RegisterOrganizer promotes an already authenticated user to organizer status
-// only when that user exists in the organizer_member table.
-func RegisterOrganizer(db *pgxpool.Pool) http.HandlerFunc {
+type organizerRegistrationPayload struct {
+	Name      string `json:"name"`
+	OrgNumber int    `json:"orgNumber"`
+	Type      string `json:"type"`
+}
+
+func parseOrganizerRegistrationPayload(r *http.Request) (organizerRegistrationPayload, bool, error) {
+	var payload organizerRegistrationPayload
+	if r.Body == nil {
+		return payload, false, nil
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		if err == io.EOF {
+			return payload, false, nil
+		}
+		return payload, false, err
+	}
+
+	if strings.TrimSpace(payload.Name) == "" && payload.OrgNumber == 0 {
+		return payload, false, nil
+	}
+
+	payload.Type = normalizeOrganizerType(payload.Type)
+	return payload, true, nil
+}
+
+func normalizeOrganizerType(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "Personal"
+	}
+	return value
+}
+
+// RegisterOrganizer creates or links an organizer for the current authenticated user.
+func PromoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -67,31 +102,61 @@ func RegisterOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		ctx := r.Context()
-		var organizerID int
-
-		err = db.QueryRow(ctx, `
-			SELECT organizer_id
-			FROM organizer_member
-			WHERE user_id = $1
-			ORDER BY organizer_id
-			LIMIT 1
-		`, userID).Scan(&organizerID)
-
-		if errors.Is(err, pgx.ErrNoRows) {
-			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(map[string]string{
-				"message": "You are not registered as an organizer member",
-			})
+		payload, hasPayload, err := parseOrganizerRegistrationPayload(r)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Invalid organizer payload"})
 			return
 		}
 
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{
-				"message": "Unable to select organizer",
-			})
-			return
+		ctx := r.Context()
+		var organizerID int
+
+		if hasPayload {
+			if strings.TrimSpace(payload.Name) == "" || payload.OrgNumber == 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]string{"message": "Organizer name and organization number are required"})
+				return
+			}
+
+			err = db.QueryRow(ctx, `
+				INSERT INTO organizers (name, org_number, type)
+				VALUES ($1, $2, $3)
+				RETURNING id
+			`, payload.Name, payload.OrgNumber, payload.Type).Scan(&organizerID)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"message": "Unable to create organizer"})
+				return
+			}
+
+			_, err = db.Exec(ctx, `
+				INSERT INTO organizer_member (user_id, organizer_id)
+				VALUES ($1, $2)
+			`, userID, organizerID)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"message": "Unable to link organizer to user"})
+				return
+			}
+		} else {
+			err = db.QueryRow(ctx, `
+				SELECT organizer_id
+				FROM organizer_member
+				WHERE user_id = $1
+				ORDER BY organizer_id
+				LIMIT 1
+			`, userID).Scan(&organizerID)
+			if err == pgx.ErrNoRows {
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]string{"message": "You are not registered as an organizer member"})
+				return
+			}
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"message": "Unable to select organizer"})
+				return
+			}
 		}
 
 		_, err = db.Exec(ctx, `
@@ -107,7 +172,7 @@ func RegisterOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"message": "User promoted to organizer",
+			"message": "Organizer created",
 			"organizerId": organizerID,
 		})
 	}

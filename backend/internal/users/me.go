@@ -29,11 +29,19 @@ func MeHandler(w http.ResponseWriter, r *http.Request) {
 
 	var u User
 	var roleStr string
-	err := db.QueryRow(ctx, "SELECT id, name, email, role FROM users WHERE id=$1", userID).Scan(&u.Id, &u.Name, &u.Email, &roleStr)
+	var orgID *int
+	err := db.QueryRow(ctx, `
+		SELECT u.id, u.name, u.email, u.role,
+		       EXISTS(SELECT 1 FROM organizer_member om WHERE om.user_id = u.id) AS is_organizer_member,
+		       (SELECT om.organizer_id FROM organizer_member om WHERE om.user_id = u.id ORDER BY om.organizer_id LIMIT 1) AS organizer_id
+		FROM users u
+		WHERE u.id = $1
+	`, userID).Scan(&u.Id, &u.Name, &u.Email, &roleStr, &u.IsOrganizerMember, &orgID)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 	u.Role = consts.Role(roleStr)
+	u.OrganizerId = orgID
 	api.WriteJSON(w, u)
 }

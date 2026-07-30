@@ -21,27 +21,28 @@ function App() {
     setUser(null);
   };
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const response = await fetch("http://localhost:8080/v1/me", {
-          credentials: "include",
-        });
+  const loadUser = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/v1/me", {
+        credentials: "include",
+      });
 
-        if (!response.ok) {
-          throw new Error("Unauthorized");
-        }
-
-        const userData = await response.json();
-        setUser(userData);
-      } catch (error) {
-        console.error("Failed to load current user", error);
-        setUser(null);
-      } finally {
-        setLoadingUser(false);
+      if (!response.ok) {
+        throw new Error("Unauthorized");
       }
-    };
 
+      const userData = await response.json();
+      setUser(userData);
+      return userData;
+    } catch (error) {
+      console.error("Failed to load current user", error);
+      setUser(null);
+    } finally {
+      setLoadingUser(false);
+    }
+  };
+
+  useEffect(() => {
     loadUser();
   }, []);
 
@@ -57,7 +58,7 @@ function App() {
                 <div className="website full-page">Loading...</div>
               ) : user ? (
                 <div className="website full-page"> 
-                  <Events user={user} onLogout={handleLogout} />
+                  <Events user={user} onLogout={handleLogout} onUserReload={loadUser} />
                 </div>
               ) : (
                 <Navigate to="/" replace />

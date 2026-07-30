@@ -53,7 +53,7 @@ func main() {
 	router.HandleFunc(consts.RegisterPath, auth.RegisterUser(db))
 	router.HandleFunc(consts.LoginPath, auth.LoginUser(db))
 	router.HandleFunc(consts.LogoutPath, auth.LogoutUser())
-	router.HandleFunc(consts.RegisterOrganizerPath, auth.AuthMiddleware(auth.RegisterOrganizer(db)))
+	router.HandleFunc(consts.PromoteOrganizerPath, auth.AuthMiddleware(auth.PromoteOrganizer(db)))
 	router.HandleFunc(consts.DemoteOrganizerPath, auth.AuthMiddleware(auth.DemoteOrganizer(db)))
 	router.HandleFunc(consts.MePath, auth.AuthMiddleware(users.MeHandler))
 	router.HandleFunc(consts.EventsPath, auth.AuthMiddleware(events.EventsHandler))

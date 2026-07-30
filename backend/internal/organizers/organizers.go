@@ -68,7 +68,7 @@ func deleteSingleOrganizer(w http.ResponseWriter, r *http.Request, id int) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Lists either all örganizers or a single organizer.
+// Lists either all organizers or a single organizer.
 func getOrganizer(w http.ResponseWriter, r *http.Request) {
 	id, isList, err := api.ExtractIDFromRequest(r, consts.OrganizersPath)
 	if isList {

@@ -5,11 +5,13 @@ import (
 )
 
 type User struct {
-	Id           int         `json:"id"`
-	Name         string      `json:"name"`
-	Email        string      `json:"email,omitempty"`
-	Role         consts.Role `json:"role"`
-	PasswordHash string      `json:"-"`
+	Id                int         `json:"id"`
+	Name              string      `json:"name"`
+	Email             string      `json:"email,omitempty"`
+	Role              consts.Role `json:"role"`
+	IsOrganizerMember bool        `json:"isOrganizerMember"`
+	OrganizerId       *int        `json:"organizerId,omitempty"`
+	PasswordHash      string      `json:"-"`
 }
 
 type InterestedOrganizers struct {

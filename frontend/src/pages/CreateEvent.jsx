@@ -1,7 +1,11 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import "../styles/CreateEvent.css";
-
+/** 
+ * Displays a form, containing information required to create an event.
+ * 
+ * @returns JSX element - The rendered form for creating a new event.
+*/
 function CreateEvent() {
   const navigate = useNavigate();
   const { state } = useLocation();
@@ -31,6 +35,7 @@ function CreateEvent() {
     }));
   };
 
+  // Event here refers to actual EVENTS showcased, not to be confused with event handlers. 
   const handleEvent = async (event) => {
     setStatusMessage("");
     setIsErrorMessage(false);
