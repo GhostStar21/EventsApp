@@ -64,6 +64,7 @@ function UserPopUp( {name,
 
   const isCurrentOrganizerMode = role === "ORGANIZER";
   const hasOrganizerMembership = Boolean(isOrganizerMember || isCurrentOrganizerMode);
+  const displayName = isCurrentOrganizerMode && organizer ? organizer.name : name || "Profile";
 
   // Responsible for switching role between user and organizer.
   const handleRoleChange = async () => {
@@ -184,7 +185,7 @@ function UserPopUp( {name,
         aria-expanded={isOpen}
       >
         <span className="user-avatar">{(name || "U").charAt(0).toUpperCase()}</span>
-        <span className="user-name"> {organizer ? organizer.name : name || "Profile"}</span>
+        <span className="user-name"> {displayName}</span>
       </button>
 
       {isOpen && (

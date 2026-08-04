@@ -43,3 +43,25 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+.earlier-events-section {
+  margin-top: 2rem;
+}
+
+.earlier-events-toggle {
+  padding: 0.7rem 1rem;
+  border: 1px solid #c4b5fd;
+  border-radius: 999px;
+  background: white;
+  color: #6d28d9;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.earlier-events-toggle:hover {
+  background: #f5f3ff;
+}
+
+.earlier-events-grid {
+  margin-top: 1rem;
+}

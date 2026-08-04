@@ -72,7 +72,21 @@ function App() {
                 <div className="website full-page">Loading...</div>
               ) : user ? (
                 <div className="website full-page">
-                  <CreateEvent />
+                  <CreateEvent user={user} />
+                </div>
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/events/edit/:id"
+            element={
+              loadingUser ? (
+                <div className="website full-page">Loading...</div>
+              ) : user ? (
+                <div className="website full-page">
+                  <CreateEvent user={user} />
                 </div>
               ) : (
                 <Navigate to="/" replace />

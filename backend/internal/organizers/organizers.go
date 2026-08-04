@@ -49,16 +49,32 @@ func deleteOrganizer(w http.ResponseWriter, r *http.Request) {
 
 // Deletes all organizers (only available for admin).
 func deleteAllOrganizers(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-		if _, err := db.Exec(ctx, "DELETE FROM organizers"); err != nil {
-			http.Error(w, "Failed to delete organizers", http.StatusInternalServerError)
-			return
-		}
+	if db == nil {
+		organizers = nil
 		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	ctx := r.Context()
+	if _, err := db.Exec(ctx, "DELETE FROM organizers"); err != nil {
+		http.Error(w, "Failed to delete organizers", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
-// Deletes a single event.
+// Deletes a single organizer.
 func deleteSingleOrganizer(w http.ResponseWriter, r *http.Request, id int) {
+	if db == nil {
+		for i, o := range organizers {
+			if o.Id == id {
+				organizers = append(organizers[:i], organizers[i+1:]...)
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		http.Error(w, "Organizer not found", http.StatusNotFound)
+		return
+	}
 	ctx := r.Context()
 	cmdTag, err := db.Exec(ctx, "DELETE FROM organizers WHERE id=$1", id)
 	if err != nil || cmdTag.RowsAffected() == 0 {
@@ -84,6 +100,10 @@ func getOrganizer(w http.ResponseWriter, r *http.Request) {
 
 // Lists all organizers that exist in the database.
 func listOrganizers(w http.ResponseWriter, r *http.Request) {
+	if db == nil {
+		api.WriteJSON(w, organizers)
+		return
+	}
 	ctx := r.Context()
 	rows, err := db.Query(ctx, "SELECT id, name, org_number FROM organizers ORDER BY id")
 	if err != nil {
@@ -92,7 +112,6 @@ func listOrganizers(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	// Organizers struct-array to store the database elements read.
 	var out []Organizer
 	for rows.Next() {
 		var o Organizer
@@ -107,6 +126,16 @@ func listOrganizers(w http.ResponseWriter, r *http.Request) {
 
 // Get a single organizer from the id
 func getSingleOrganizer(w http.ResponseWriter, r *http.Request, id int) {
+	if db == nil {
+		for _, o := range organizers {
+			if o.Id == id {
+				api.WriteJSON(w, o)
+				return
+			}
+		}
+		http.Error(w, "Organizer not found", http.StatusNotFound)
+		return
+	}
 	ctx := r.Context()
 	var o Organizer
 	err := db.QueryRow(ctx, "SELECT id, name, org_number FROM organizers WHERE id=$1", id).Scan(&o.Id, &o.Name, &o.OrgNumber)
@@ -122,6 +151,13 @@ func postOrganizer(w http.ResponseWriter, r *http.Request) {
 	var o Organizer
 	if err := json.NewDecoder(r.Body).Decode(&o); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if db == nil {
+		o.Id = len(organizers) + 1
+		organizers = append(organizers, o)
+		w.WriteHeader(http.StatusCreated)
+		api.WriteJSON(w, o)
 		return
 	}
 	ctx := r.Context()
@@ -157,9 +193,19 @@ func updateOrganizer(w http.ResponseWriter, r *http.Request) {
 		o.Id = id
 	}
 
-	// Check if the URL ID matches the ID of the element read from the database
 	if o.Id != id {
 		http.Error(w, "Organizer ID mismatch", http.StatusBadRequest)
+		return
+	}
+	if db == nil {
+		for i, existing := range organizers {
+			if existing.Id == id {
+				organizers[i] = o
+				api.WriteJSON(w, o)
+				return
+			}
+		}
+		http.Error(w, "Organizer not found", http.StatusNotFound)
 		return
 	}
 	ctx := r.Context()
@@ -170,4 +216,3 @@ func updateOrganizer(w http.ResponseWriter, r *http.Request) {
 	}
 	api.WriteJSON(w, o)
 }
-

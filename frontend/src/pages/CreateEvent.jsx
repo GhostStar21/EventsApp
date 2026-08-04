@@ -1,30 +1,79 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import "../styles/CreateEvent.css";
+
 /** 
- * Displays a form, containing information required to create an event.
+ * Displays a form for creating or updating an event.
  * 
- * @returns JSX element - The rendered form for creating a new event.
+ * @returns JSX element - The rendered form for creating/updating an event.
 */
 function CreateEvent() {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { state } = useLocation();
   const organizer = state?.organizer;
-  const [eventData, setEventData] = useState(
-    {
-      id: "", 
-      name: "", 
-      isExclusive: false,
-      event_date: "",
-      event_time: "",
-      location: "",
-      description: "",
-      isRegistration: false,
-    }
-  );
+  const isEdit = Boolean(id);
+
+  const [eventData, setEventData] = useState({
+    id: "", 
+    name: "", 
+    isExclusive: false,
+    event_date: "",
+    event_time: "",
+    location: "",
+    description: "",
+    isRegistration: false,
+  });
+
   const [statusMessage, setStatusMessage] = useState("");
   const [isErrorMessage, setIsErrorMessage] = useState(false);
-  const [eventCreated, setEventCreated] = useState(false);
+  const [eventSubmitted, setEventSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (isEdit) {
+      if (state?.event) {
+        populateForm(state.event);
+      } else {
+        fetch(`http://localhost:8080/v1/events/${id}`, {
+          credentials: "include",
+        })
+          .then((res) => (res.ok ? res.json() : Promise.reject("Event not found")))
+          .then((data) => populateForm(data))
+          .catch((err) => {
+            console.error("Error loading event", err);
+            setStatusMessage("Could not load event for editing.");
+            setIsErrorMessage(true);
+          });
+      }
+    }
+  }, [id, isEdit, state?.event]);
+
+  const populateForm = (ev) => {
+    let dateStr = "";
+    if (ev.event_date) {
+      dateStr = ev.event_date.split("T")[0];
+    } else if (ev.date) {
+      dateStr = ev.date.split("T")[0];
+    }
+
+    let timeStr = "";
+    if (ev.event_time) {
+      timeStr = ev.event_time.includes("T") ? ev.event_time.split("T")[1].substring(0, 5) : ev.event_time.substring(0, 5);
+    } else if (ev.time) {
+      timeStr = ev.time.includes("T") ? ev.time.split("T")[1].substring(0, 5) : ev.time.substring(0, 5);
+    }
+
+    setEventData({
+      id: ev.id,
+      name: ev.name || ev.title || "",
+      isExclusive: Boolean(ev.isExclusive),
+      event_date: dateStr,
+      event_time: timeStr,
+      location: ev.location || "",
+      description: ev.description || "",
+      isRegistration: Boolean(ev.isRegistration),
+    });
+  };
 
   const handleInputChange = (event) => {
     const { name, type, value, checked } = event.target;
@@ -35,24 +84,35 @@ function CreateEvent() {
     }));
   };
 
-  // Event here refers to actual EVENTS showcased, not to be confused with event handlers. 
   const handleEvent = async (event) => {
     setStatusMessage("");
     setIsErrorMessage(false);
     event.preventDefault();
 
+    const url = isEdit ? `http://localhost:8080/v1/events/${id}` : "http://localhost:8080/v1/events";
+    const method = isEdit ? "PUT" : "POST";
+
+    const formattedDate = eventData.event_date
+      ? (eventData.event_date.includes("T") ? eventData.event_date : `${eventData.event_date}T00:00:00Z`)
+      : "";
+      
+    const formattedTime = eventData.event_time
+      ? (eventData.event_time.includes("T") ? eventData.event_time : `0001-01-01T${eventData.event_time}:00Z`)
+      : "";
+
     try {
-      const response = await fetch("http://localhost:8080/v1/events", {
-        method: "POST",
+      const response = await fetch(url, {
+        method,
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          id: isEdit ? Number(id) : undefined,
           name: eventData.name,
           isExclusive: eventData.isExclusive,
-          event_date: eventData.event_date,
-          event_time: eventData.event_time,
+          event_date: formattedDate,
+          event_time: formattedTime,
           location: eventData.location,
           description: eventData.description,
           isRegistration: eventData.isRegistration,
@@ -60,34 +120,31 @@ function CreateEvent() {
       });
 
       const data = await response.json().catch(() => null);
-      console.log("Response status:", response.status);
 
       if (response.ok) {
-        setStatusMessage("Event created successfully!");
+        setStatusMessage(isEdit ? "Event updated successfully!" : "Event created successfully!");
         setIsErrorMessage(false);
-        setEventCreated(true);
+        setEventSubmitted(true);
       } else {
-        setStatusMessage(data?.message || "Could not create event.");
+        setStatusMessage(data?.message || (isEdit ? "Could not update event." : "Could not create event."));
         setIsErrorMessage(true);
       }
 
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Server error:", error);
       setStatusMessage("Could not reach the server.");
       setIsErrorMessage(true);
     }
-  } 
+  };
 
-  let eventOverlay = 
-  <>
+  let eventOverlay = (
     <section className="create-event-card">
-      <h1>Create event</h1>
-      {organizer && <p>Creating an event for {organizer.name}.</p>}
-      {eventCreated ? (
+      <h1>{isEdit ? "Edit event" : "Create event"}</h1>
+      {organizer && <p>{isEdit ? "Editing" : "Creating"} event for {organizer.name}.</p>}
+      {eventSubmitted ? (
         <div className="event-created-message">
           <p>{statusMessage}</p>
-          <button onClick={() => navigate("/events")}>
+          <button className="submit-event-button" onClick={() => navigate("/events")}>
             Back to events
           </button>
         </div>
@@ -183,19 +240,19 @@ function CreateEvent() {
             </p>
           )}
 
-          <button className="submit-event-button" type="submit">Create event</button>
+          <button className="submit-event-button" type="submit">
+            {isEdit ? "Update event" : "Create event"}
+          </button>
         </form>
       )}
     </section>
-  
-  </>
-
+  );
 
   return (
     <main className="create-event-page">
-      {!eventCreated && (
+      {!eventSubmitted && (
         <button className="back-button" onClick={() => navigate("/events")}>
-          Back to events
+          ← Back to events
         </button>
       )}
       {eventOverlay}
