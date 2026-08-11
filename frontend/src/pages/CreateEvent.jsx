@@ -23,6 +23,7 @@ function CreateEvent() {
     location: "",
     description: "",
     isRegistration: false,
+    registrationLink: "",
   });
 
   const [statusMessage, setStatusMessage] = useState("");
@@ -72,6 +73,7 @@ function CreateEvent() {
       location: ev.location || "",
       description: ev.description || "",
       isRegistration: Boolean(ev.isRegistration),
+      registrationLink: ev.registrationLink || "",
     });
   };
 
@@ -116,6 +118,7 @@ function CreateEvent() {
           location: eventData.location,
           description: eventData.description,
           isRegistration: eventData.isRegistration,
+          registrationLink: eventData.registrationLink,
         }),
       });
 
@@ -233,6 +236,20 @@ function CreateEvent() {
             />
             Registration required
           </label>
+
+          {eventData.isRegistration && (
+            <div className="form-field">
+              <label htmlFor="registrationLink">Registration link</label>
+              <input
+                id="registrationLink"
+                type="url"
+                name="registrationLink"
+                placeholder="https://example.com/register"
+                value={eventData.registrationLink}
+                onChange={handleInputChange}
+              />
+            </div>
+          )}
 
           {statusMessage && (
             <p className={isErrorMessage ? "form-message error" : "form-message success"}>

@@ -165,7 +165,7 @@ func listEvents(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	rows, err := db.Query(ctx, `
-		SELECT e.id, e.name, e.is_exclusive, e.event_date, e.event_time, e.location, e.description, e.is_registration,
+		SELECT e.id, e.name, e.is_exclusive, e.event_date, e.event_time, e.location, e.description, e.is_registration, e.registration_link,
 		       (SELECT eo.organizer_id FROM event_organizers eo WHERE eo.event_id = e.id ORDER BY eo.organizer_id LIMIT 1) AS organizer_id,
 		       (SELECT o.name FROM event_organizers eo JOIN organizers o ON eo.organizer_id = o.id WHERE eo.event_id = e.id ORDER BY eo.organizer_id LIMIT 1) AS organizer_name
 		FROM events e
@@ -182,15 +182,19 @@ func listEvents(w http.ResponseWriter, r *http.Request) {
 		var e Events
 		var date time.Time
 		var tm time.Time
+		var registrationLink sql.NullString
 		var orgID sql.NullInt32
 		var orgName sql.NullString
 
-		if err := rows.Scan(&e.Id, &e.Name, &e.IsExclusive, &date, &tm, &e.Location, &e.Description, &e.IsRegistration, &orgID, &orgName); err != nil {
+		if err := rows.Scan(&e.Id, &e.Name, &e.IsExclusive, &date, &tm, &e.Location, &e.Description, &e.IsRegistration, &registrationLink, &orgID, &orgName); err != nil {
 			http.Error(w, "Failed to scan event", http.StatusInternalServerError)
 			return
 		}
 		e.Date = date
 		e.Time = tm
+		if registrationLink.Valid {
+			e.RegistrationLink = registrationLink.String
+		}
 		if orgID.Valid {
 			v := int(orgID.Int32)
 			e.OrganizerId = &v
@@ -221,22 +225,26 @@ func getSingleEvent(w http.ResponseWriter, r *http.Request, id int) {
 	var e Events
 	var date time.Time
 	var tm time.Time
+	var registrationLink sql.NullString
 	var orgID sql.NullInt32
 	var orgName sql.NullString
 
 	err := db.QueryRow(ctx, `
-		SELECT e.id, e.name, e.is_exclusive, e.event_date, e.event_time, e.location, e.description, e.is_registration,
+		SELECT e.id, e.name, e.is_exclusive, e.event_date, e.event_time, e.location, e.description, e.is_registration, e.registration_link,
 		       (SELECT eo.organizer_id FROM event_organizers eo WHERE eo.event_id = e.id ORDER BY eo.organizer_id LIMIT 1) AS organizer_id,
 		       (SELECT o.name FROM event_organizers eo JOIN organizers o ON eo.organizer_id = o.id WHERE eo.event_id = e.id ORDER BY eo.organizer_id LIMIT 1) AS organizer_name
 		FROM events e
 		WHERE e.id = $1
-	`, id).Scan(&e.Id, &e.Name, &e.IsExclusive, &date, &tm, &e.Location, &e.Description, &e.IsRegistration, &orgID, &orgName)
+	`, id).Scan(&e.Id, &e.Name, &e.IsExclusive, &date, &tm, &e.Location, &e.Description, &e.IsRegistration, &registrationLink, &orgID, &orgName)
 	if err != nil {
 		http.Error(w, "Event not found", http.StatusNotFound)
 		return
 	}
 	e.Date = date
 	e.Time = tm
+	if registrationLink.Valid {
+		e.RegistrationLink = registrationLink.String
+	}
 	if orgID.Valid {
 		v := int(orgID.Int32)
 		e.OrganizerId = &v
@@ -320,8 +328,8 @@ func postEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var id int
-	err = db.QueryRow(ctx, "INSERT INTO events (name, is_exclusive, event_date, event_time, location, description, is_registration) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id",
-		event.Name, event.IsExclusive, dateValue, timeValue, event.Location, event.Description, event.IsRegistration).Scan(&id)
+	err = db.QueryRow(ctx, "INSERT INTO events (name, is_exclusive, event_date, event_time, location, description, is_registration, registration_link) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+		event.Name, event.IsExclusive, dateValue, timeValue, event.Location, event.Description, event.IsRegistration, event.RegistrationLink).Scan(&id)
 	if err != nil {
 		http.Error(w, "Failed to create event", http.StatusInternalServerError)
 		return
@@ -418,8 +426,8 @@ func updateEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	cmdTag, err := db.Exec(ctx, "UPDATE events SET name=$1, is_exclusive=$2, event_date=$3, event_time=$4, location=$5, description=$6, is_registration=$7 WHERE id=$8",
-		event.Name, event.IsExclusive, event.Date, event.Time, event.Location, event.Description, event.IsRegistration, event.Id)
+	cmdTag, err := db.Exec(ctx, "UPDATE events SET name=$1, is_exclusive=$2, event_date=$3, event_time=$4, location=$5, description=$6, is_registration=$7, registration_link=$8 WHERE id=$9",
+		event.Name, event.IsExclusive, event.Date, event.Time, event.Location, event.Description, event.IsRegistration, event.RegistrationLink, event.Id)
 	if err != nil || cmdTag.RowsAffected() == 0 {
 		http.Error(w, "Failed to update event", http.StatusInternalServerError)
 		return

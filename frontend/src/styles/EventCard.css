@@ -50,6 +50,10 @@
   font-size: 0.9rem;
 }
 
+.event-card-view-action {
+  padding: 15px;
+}
+
 .expanded {
   width: 600px;
 }

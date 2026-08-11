@@ -2,7 +2,7 @@ import { useState } from "react";
 import "../styles/EventCard.css";
 
 /**
- * Displays an event card, and its description based on clicks.
+ * Displays an event card, with a control to show its description.
  * 
  * @param {event} - An event fetched from the backend side
  * @param {user} - Currently authenticated user
@@ -55,10 +55,7 @@ import "../styles/EventCard.css";
         onEdit(event);
       };
     return (
-      <div
-      className={expanded ? "event-card expanded" : "event-card"}
-      onClick={() => setExpanded(!expanded)}
-      >
+      <div className={expanded ? "event-card expanded" : "event-card"}>
       <img
       src={event.image || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=600&q=80"}
       alt={title}
@@ -73,11 +70,36 @@ import "../styles/EventCard.css";
       📅 {formattedDate} {formattedTime ? `at ${formattedTime}` : ""}
       </p>
       <p className="event-meta">📍 {event.location}</p>
+      <div className="event-card-view-action">
+        <button
+          className="view-btn"
+          onClick={() => setExpanded((isExpanded) => !isExpanded)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Hide details" : "View"}
+        </button>
+      </div>
       {expanded && (
       <div className="description">
         <p>{event.description}</p>
         <div className="event-card-actions">
-          <button className="view-btn">View event</button>
+          {event.isRegistration && (
+            event.registrationLink ? (
+              <a
+                className="view-btn"
+                href={event.registrationLink}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Register
+              </a>
+            ) : (
+              <button className="view-btn" onClick={(e) => e.stopPropagation()}>
+                Register
+              </button>
+            )
+          )}
             {canManage && (
               <>
               <button className="edit-btn" onClick={handleEdit}>
