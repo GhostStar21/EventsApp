@@ -3,7 +3,6 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
@@ -52,23 +51,21 @@ func LoginUser(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// Generate token upon successful login
-		token, err := GenerateToken(id, role)
-		if err != nil {
+		if err := SetSessionCookie(w, id, role); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to generate token"})
 			return
 		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session_token",
-			Value:    token,
-			Path:     "/",
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteNoneMode,
-			Expires:  time.Now().Add(24 * time.Hour),
-		})
+		// Generate and set CSRF token
+		csrfToken, err := GenerateCSRFToken()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to generate CSRF token"})
+			return
+		}
+		StoreCSRFToken(csrfToken)
+		SetCSRFCookie(w, csrfToken)
 
 		json.NewEncoder(w).Encode(map[string]string{"message": "Login successful"})
 	}

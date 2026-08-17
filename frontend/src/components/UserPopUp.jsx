@@ -14,6 +14,39 @@ import "../styles/UserPopUp.css";
  * @param {onUserReload} - A function that loads the user that is performing actions.
  * @returns 
  */
+
+// CSRF Protection utility
+const getCsrfToken = () => {
+  // Try to get CSRF token from meta tag first
+  const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  if (metaToken) return metaToken;
+  
+  // Try to get from cookie
+  const cookie = document.cookie.split('; ').find(row => row.startsWith('XSRF-TOKEN='));
+  if (cookie) return cookie.split('=')[1];
+  
+  return '';
+};
+
+// Fetch a new CSRF token from the backend (for authenticated users)
+const fetchCSRFToken = async () => {
+  try {
+    const response = await fetch("http://localhost:8080/v1/csrf-token", {
+      method: "GET",
+      credentials: "include",
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.token;
+    }
+  } catch (error) {
+    console.warn("Could not fetch CSRF token:", error);
+  }
+  
+  return '';
+};
+
 function UserPopUp( {name,
   email,
   role,
@@ -63,6 +96,7 @@ function UserPopUp( {name,
   };
 
   const isCurrentOrganizerMode = role === "ORGANIZER";
+  const isAdmin = role === "ADMIN";
   const hasOrganizerMembership = Boolean(isOrganizerMember || isCurrentOrganizerMode);
   const displayName = isCurrentOrganizerMode && organizer ? organizer.name : name || "Profile";
 
@@ -77,9 +111,23 @@ function UserPopUp( {name,
     }
 
     try {
+      // Fetch fresh CSRF token
+      let csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        csrfToken = await fetchCSRFToken();
+      }
+      
+      const headers = {};
+      
+      // Add CSRF token if available
+      if (csrfToken) {
+        headers["X-CSRF-TOKEN"] = csrfToken;
+      }
+
       const response = await fetch("http://localhost:8080/v1/promote-organizer", {
         method: "POST",
         credentials: "include",
+        headers,
       });
 
       const data = await response.json().catch(() => null);
@@ -114,12 +162,25 @@ function UserPopUp( {name,
     setIsErrorMessage(false);
 
     try {
+      // Fetch fresh CSRF token
+      let csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        csrfToken = await fetchCSRFToken();
+      }
+      
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      
+      // Add CSRF token if available
+      if (csrfToken) {
+        headers["X-CSRF-TOKEN"] = csrfToken;
+      }
+
       const response = await fetch("http://localhost:8080/v1/promote-organizer", {
         method: "POST",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           name: formData.name,
           orgNumber: Number(formData.orgNumber),
@@ -155,9 +216,23 @@ function UserPopUp( {name,
 
   const handleDemote = async () => {
     try {
+      // Fetch fresh CSRF token
+      let csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        csrfToken = await fetchCSRFToken();
+      }
+      
+      const headers = {};
+      
+      // Add CSRF token if available
+      if (csrfToken) {
+        headers["X-CSRF-TOKEN"] = csrfToken;
+      }
+
       const response = await fetch("http://localhost:8080/v1/demote-organizer", {
         method: "POST",
         credentials: "include",
+        headers,
       });
 
       const data = await response.json().catch(() => null);
@@ -197,7 +272,7 @@ function UserPopUp( {name,
               <button className="user-popup-trigger" onClick={handleDemote}>
                 Switch to User
               </button>
-            ) : hasOrganizerMembership ? (
+            ) : isAdmin ? null : hasOrganizerMembership ? (
               <button className="user-popup-trigger" onClick={handleRoleChange}>
                 Switch to Organizer
               </button>

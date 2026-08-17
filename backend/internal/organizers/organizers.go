@@ -2,6 +2,7 @@ package organizers
 
 import (
 	"EventsApp/internal/api"
+	"EventsApp/internal/auth"
 	"EventsApp/internal/consts"
 	"encoding/json"
 	"net/http"
@@ -49,12 +50,16 @@ func deleteOrganizer(w http.ResponseWriter, r *http.Request) {
 
 // Deletes all organizers (only available for admin).
 func deleteAllOrganizers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !auth.IsAdmin(ctx) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
 	if db == nil {
 		organizers = nil
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	ctx := r.Context()
 	if _, err := db.Exec(ctx, "DELETE FROM organizers"); err != nil {
 		http.Error(w, "Failed to delete organizers", http.StatusInternalServerError)
 		return
@@ -105,7 +110,7 @@ func listOrganizers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	rows, err := db.Query(ctx, "SELECT id, name, org_number FROM organizers ORDER BY id")
+	rows, err := db.Query(ctx, "SELECT id, name, org_number, type, is_approved FROM organizers ORDER BY id")
 	if err != nil {
 		http.Error(w, "Failed to query organizers", http.StatusInternalServerError)
 		return
@@ -115,7 +120,7 @@ func listOrganizers(w http.ResponseWriter, r *http.Request) {
 	var out []Organizer
 	for rows.Next() {
 		var o Organizer
-		if err := rows.Scan(&o.Id, &o.Name, &o.OrgNumber); err != nil {
+		if err := rows.Scan(&o.Id, &o.Name, &o.OrgNumber, &o.Type, &o.IsApproved); err != nil {
 			http.Error(w, "Failed to scan organizer", http.StatusInternalServerError)
 			return
 		}
@@ -138,7 +143,7 @@ func getSingleOrganizer(w http.ResponseWriter, r *http.Request, id int) {
 	}
 	ctx := r.Context()
 	var o Organizer
-	err := db.QueryRow(ctx, "SELECT id, name, org_number FROM organizers WHERE id=$1", id).Scan(&o.Id, &o.Name, &o.OrgNumber)
+	err := db.QueryRow(ctx, "SELECT id, name, org_number, type, is_approved FROM organizers WHERE id=$1", id).Scan(&o.Id, &o.Name, &o.OrgNumber, &o.Type, &o.IsApproved)
 	if err != nil {
 		http.Error(w, "Organizer not found", http.StatusNotFound)
 		return
@@ -160,14 +165,16 @@ func postOrganizer(w http.ResponseWriter, r *http.Request) {
 		api.WriteJSON(w, o)
 		return
 	}
-	ctx := r.Context()
 	var id int
-	err := db.QueryRow(ctx, "INSERT INTO organizers (name, org_number) VALUES ($1,$2) RETURNING id", o.Name, o.OrgNumber).Scan(&id)
+	var isApproved string
+	ctx := r.Context()
+	err := db.QueryRow(ctx, "INSERT INTO organizers (name, org_number, type) VALUES ($1,$2,$3) RETURNING id, is_approved", o.Name, o.OrgNumber, o.Type).Scan(&id, &isApproved)
 	if err != nil {
 		http.Error(w, "Failed to create organizer", http.StatusInternalServerError)
 		return
 	}
 	o.Id = id
+	o.IsApproved = isApproved
 	w.WriteHeader(http.StatusCreated)
 	api.WriteJSON(w, o)
 }
@@ -208,8 +215,20 @@ func updateOrganizer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Organizer not found", http.StatusNotFound)
 		return
 	}
+
 	ctx := r.Context()
-	cmdTag, err := db.Exec(ctx, "UPDATE organizers SET name=$1, org_number=$2 WHERE id=$3", o.Name, o.OrgNumber, o.Id)
+	// Admins may update the approval status. Non-admins cannot change approval.
+	if auth.IsAdmin(ctx) && o.IsApproved != "" {
+		cmdTag, err := db.Exec(ctx, "UPDATE organizers SET name=$1, org_number=$2, type=$3, is_approved=$4 WHERE id=$5", o.Name, o.OrgNumber, o.Type, o.IsApproved, o.Id)
+		if err != nil || cmdTag.RowsAffected() == 0 {
+			http.Error(w, "Failed to update organizer", http.StatusInternalServerError)
+			return
+		}
+		api.WriteJSON(w, o)
+		return
+	}
+
+	cmdTag, err := db.Exec(ctx, "UPDATE organizers SET name=$1, org_number=$2, type=$3 WHERE id=$4", o.Name, o.OrgNumber, o.Type, o.Id)
 	if err != nil || cmdTag.RowsAffected() == 0 {
 		http.Error(w, "Failed to update organizer", http.StatusInternalServerError)
 		return

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import EventCard from "../components/EventCard";
 import UserPopUp from "../components/UserPopUp.jsx";
+import AdminNav from "../components/AdminNav.jsx";
 import "../styles/Events.css";
 
 /** 
@@ -125,7 +126,7 @@ function Events({ user, onLogout, onUserReload }) {
       <div className="events-header">
         <div className="events-header-left">
           <h1>Hva Skjer!</h1>
-          {user?.role === "ORGANIZER" && (
+          { (user?.role === "ORGANIZER" || user?.role === "ADMIN") && (
             <button
               className="create-event-button"
               onClick={() => navigate("/events/new", { state: { organizer } })}
@@ -134,6 +135,7 @@ function Events({ user, onLogout, onUserReload }) {
             </button>
           )}
         </div>
+        <AdminNav user={user} />
         <UserPopUp 
           name={user?.name} 
           email={user?.email} 

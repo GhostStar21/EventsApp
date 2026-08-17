@@ -2,11 +2,13 @@ package users
 
 import (
 	"EventsApp/internal/api"
+	"EventsApp/internal/auth"
 	"EventsApp/internal/consts"
 	"encoding/json"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var db *pgxpool.Pool
@@ -49,12 +51,22 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 
 // Lists all users in the database.
 func listUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !auth.IsAdmin(ctx) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
 	if db == nil {
 		api.WriteJSON(w, users)
 		return
 	}
-	ctx := r.Context()
-	rows, err := db.Query(ctx, "SELECT id, name FROM users ORDER BY id")
+	rows, err := db.Query(ctx, `
+		SELECT u.id, u.name, u.email, u.role,
+		       EXISTS(SELECT 1 FROM organizer_member om WHERE om.user_id = u.id) AS is_organizer_member,
+		       (SELECT om.organizer_id FROM organizer_member om WHERE om.user_id = u.id ORDER BY om.organizer_id LIMIT 1) AS organizer_id
+		FROM users u
+		ORDER BY u.id
+	`)
 	if err != nil {
 		http.Error(w, "Failed to query users", http.StatusInternalServerError)
 		return
@@ -64,10 +76,14 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 	var out []User
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.Id, &u.Name); err != nil {
+		var roleStr string
+		var orgID *int
+		if err := rows.Scan(&u.Id, &u.Name, &u.Email, &roleStr, &u.IsOrganizerMember, &orgID); err != nil {
 			http.Error(w, "Failed to scan user", http.StatusInternalServerError)
 			return
 		}
+		u.Role = consts.Role(roleStr)
+		u.OrganizerId = orgID
 		out = append(out, u)
 	}
 	api.WriteJSON(w, out)
@@ -75,6 +91,13 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 
 // List a single user based on the id provided.
 func getSingleUser(w http.ResponseWriter, r *http.Request, id int) {
+	ctx := r.Context()
+	currentUserID, _ := auth.GetUserIDFromContext(ctx)
+	if !auth.IsAdmin(ctx) && currentUserID != id {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	if db == nil {
 		for _, u := range users {
 			if u.Id == id {
@@ -85,23 +108,68 @@ func getSingleUser(w http.ResponseWriter, r *http.Request, id int) {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
-	ctx := r.Context()
+
 	var u User
-	err := db.QueryRow(ctx, "SELECT id, name FROM users WHERE id=$1", id).Scan(&u.Id, &u.Name)
+	var roleStr string
+	var orgID *int
+	err := db.QueryRow(ctx, `
+		SELECT u.id, u.name, u.email, u.role,
+		       EXISTS(SELECT 1 FROM organizer_member om WHERE om.user_id = u.id) AS is_organizer_member,
+		       (SELECT om.organizer_id FROM organizer_member om WHERE om.user_id = u.id ORDER BY om.organizer_id LIMIT 1) AS organizer_id
+		FROM users u
+		WHERE u.id = $1
+	`, id).Scan(&u.Id, &u.Name, &u.Email, &roleStr, &u.IsOrganizerMember, &orgID)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
+	u.Role = consts.Role(roleStr)
+	u.OrganizerId = orgID
 	api.WriteJSON(w, u)
 }
 
 // Register a user.
+type createUserRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password,omitempty"`
+	Role     string `json:"role,omitempty"`
+}
+
 func postUsers(w http.ResponseWriter, r *http.Request) {
-	var u User
-	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+	ctx := r.Context()
+	if !auth.IsAdmin(ctx) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	var req createUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+	if req.Name == "" {
+		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+
+	passwordHash := ""
+	if req.Password != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			http.Error(w, "Error hashing password", http.StatusInternalServerError)
+			return
+		}
+		passwordHash = string(hash)
+	}
+
+	u := User{
+		Name:         req.Name,
+		Email:        req.Email,
+		Role:         consts.Role(req.Role),
+		PasswordHash: passwordHash,
+	}
+
 	if db == nil {
 		u.Id = len(users) + 1
 		users = append(users, u)
@@ -109,9 +177,13 @@ func postUsers(w http.ResponseWriter, r *http.Request) {
 		api.WriteJSON(w, u)
 		return
 	}
-	ctx := r.Context()
+
+	if u.Role == "" {
+		u.Role = consts.RoleUser
+	}
+
 	var id int
-	err := db.QueryRow(ctx, "INSERT INTO users (name) VALUES ($1) RETURNING id", u.Name).Scan(&id)
+	err := db.QueryRow(ctx, "INSERT INTO users (name, email, password_hash, role) VALUES ($1,$2,$3,$4) RETURNING id", u.Name, u.Email, u.PasswordHash, u.Role).Scan(&id)
 	if err != nil {
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
 		return
@@ -133,6 +205,13 @@ func updateUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
+	currentUserID, _ := auth.GetUserIDFromContext(ctx)
+	if !auth.IsAdmin(ctx) && currentUserID != id {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	var u User
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -145,23 +224,45 @@ func updateUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "User ID mismatch", http.StatusBadRequest)
 		return
 	}
+
 	if db == nil {
 		for i, existing := range users {
 			if existing.Id == id {
-				users[i] = u
-				api.WriteJSON(w, u)
+				users[i].Name = u.Name
+				users[i].Email = u.Email
+				if auth.IsAdmin(ctx) && u.Role != "" {
+					users[i].Role = u.Role
+				}
+				api.WriteJSON(w, users[i])
 				return
 			}
 		}
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
-	ctx := r.Context()
-	cmdTag, err := db.Exec(ctx, "UPDATE users SET name=$1 WHERE id=$2", u.Name, u.Id)
-	if err != nil || cmdTag.RowsAffected() == 0 {
-		http.Error(w, "Failed to update user", http.StatusInternalServerError)
-		return
+
+	if auth.IsAdmin(ctx) {
+		if u.Role == "" {
+			var currentRole string
+			if err := db.QueryRow(ctx, "SELECT role FROM users WHERE id=$1", id).Scan(&currentRole); err != nil {
+				http.Error(w, "User not found", http.StatusNotFound)
+				return
+			}
+			u.Role = consts.Role(currentRole)
+		}
+		cmdTag, err := db.Exec(ctx, "UPDATE users SET name=$1, email=$2, role=$3 WHERE id=$4", u.Name, u.Email, u.Role, u.Id)
+		if err != nil || cmdTag.RowsAffected() == 0 {
+			http.Error(w, "Failed to update user", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		cmdTag, err := db.Exec(ctx, "UPDATE users SET name=$1, email=$2 WHERE id=$3", u.Name, u.Email, u.Id)
+		if err != nil || cmdTag.RowsAffected() == 0 {
+			http.Error(w, "Failed to update user", http.StatusInternalServerError)
+			return
+		}
 	}
+
 	api.WriteJSON(w, u)
 }
 
@@ -181,12 +282,16 @@ func deleteUsers(w http.ResponseWriter, r *http.Request) {
 
 // Delete all users from the database.
 func deleteAllUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !auth.IsAdmin(ctx) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
 	if db == nil {
 		users = nil
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	ctx := r.Context()
 	if _, err := db.Exec(ctx, "DELETE FROM users"); err != nil {
 		http.Error(w, "Failed to delete users", http.StatusInternalServerError)
 		return

@@ -10,6 +10,39 @@ import "../styles/EventCard.css";
  * @param {onDelete} - Function to trigger deleting an event
  * @returns JSX element - The rendered event card
 */
+
+// XSS Protection: Validate and sanitize image URLs
+const getSafeImageUrl = (url) => {
+  if (!url) return "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=600&q=80";
+  try {
+    const parsedUrl = new URL(url);
+    // Only allow http and https protocols
+    if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+      return url;
+    }
+  } catch (e) {
+    // Invalid URL format
+    console.warn('Invalid image URL provided:', url);
+  }
+  return "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=600&q=80";
+};
+
+// XSS Protection: Validate and sanitize registration URLs
+const getSafeRegistrationLink = (link) => {
+  if (!link) return null;
+  try {
+    const parsedUrl = new URL(link);
+    // Only allow http and https protocols
+    if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+      return link;
+    }
+  } catch (e) {
+    // Invalid URL format
+    console.warn('Invalid registration URL provided:', link);
+  }
+  return null;
+};
+
   function EventCard({ event, user, onEdit, onDelete }) {
     const [expanded, setExpanded] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -42,22 +75,38 @@ import "../styles/EventCard.css";
 
       const handleDelete = (e) => {
         e.stopPropagation();
+        // Authorization check: Prevent unauthorized access
+        if (!canManage) {
+          console.warn("Security Alert: Attempted to delete event without manage permissions.");
+          return;
+        }
         setShowDeleteModal(true);
       };
 
       const confirmDelete = () => {
+        // Authorization check: Prevent unauthorized access
+        if (!canManage) {
+          console.warn("Security Alert: Attempted to confirm delete without manage permissions.");
+          setShowDeleteModal(false);
+          return;
+        }
         onDelete(event.id);
         setShowDeleteModal(false);
       };
 
       const handleEdit = (e) => {
         e.stopPropagation();
+        // Authorization check: Prevent unauthorized access
+        if (!canManage) {
+          console.warn("Security Alert: Attempted to edit event without manage permissions.");
+          return;
+        }
         onEdit(event);
       };
     return (
       <div className={expanded ? "event-card expanded" : "event-card"}>
       <img
-      src={event.image || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=600&q=80"}
+      src={getSafeImageUrl(event.image)}
       alt={title}
       />
       <h2>{title}</h2>
@@ -84,10 +133,10 @@ import "../styles/EventCard.css";
         <p>{event.description}</p>
         <div className="event-card-actions">
           {event.isRegistration && (
-            event.registrationLink ? (
+            getSafeRegistrationLink(event.registrationLink) ? (
               <a
                 className="view-btn"
-                href={event.registrationLink}
+                href={getSafeRegistrationLink(event.registrationLink)}
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}

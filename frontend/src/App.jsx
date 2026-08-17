@@ -4,6 +4,7 @@ import Authentication from "./components/Authentication.jsx";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import Events from "./pages/Events.jsx"
 import CreateEvent from "./pages/CreateEvent.jsx"
+import Admin from "./pages/Admin.jsx"
 
 function App() {
   const [user, setUser] = useState(null);
@@ -87,6 +88,20 @@ function App() {
               ) : user ? (
                 <div className="website full-page">
                   <CreateEvent user={user} />
+                </div>
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              loadingUser ? (
+                <div className="website full-page">Loading...</div>
+              ) : user ? (
+                <div className="website full-page">
+                  <Admin user={user} onUserReload={loadUser} />
                 </div>
               ) : (
                 <Navigate to="/" replace />

@@ -1,14 +1,17 @@
 package auth
 
 import (
+	"EventsApp/internal/consts"
 	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
-	"EventsApp/internal/consts"
+	"log"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
+	"github.com/jackc/pgx/v5/pgconn"
+	"regexp"
 )
 
 type RegisterRequest struct {
@@ -29,6 +32,19 @@ func RegisterUser(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,4}$`)
+            if !emailRegex.MatchString(req.Email) {
+                w.WriteHeader(http.StatusBadRequest)
+                json.NewEncoder(w).Encode(map[string]string{"message": "Invalid email format"})
+                return
+            }
+
+		if len(req.Password) < 8 {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Password must be at least 8 characters long"})
+			return
+		}
+
 		// Hash the password
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
@@ -45,10 +61,19 @@ func RegisterUser(db *pgxpool.Pool) http.HandlerFunc {
         `, req.Name, req.Email, string(hash))
 
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"message": "User already exists"})
-			return
+            if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" { // 23505 is unique_violation
+                w.WriteHeader(http.StatusConflict) // 409 Conflict is more appropriate for duplicates
+                json.NewEncoder(w).Encode(map[string]string{"message": "User with this email already exists"})
+                return
+            }
+            log.Printf("Error registering user: %v", err)
+            w.WriteHeader(http.StatusInternalServerError)
+            json.NewEncoder(w).Encode(map[string]string{"message": "An internal server error occurred during registration"})
+            return
 		}
+
+		
+
 
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]string{"message": "User created"})
@@ -170,9 +195,15 @@ func PromoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		if err := SetSessionCookie(w, userID, string(consts.RoleOrganizer)); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to refresh session"})
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"message": "Organizer created",
+			"message":     "Organizer created",
 			"organizerId": organizerID,
 		})
 	}
@@ -199,6 +230,12 @@ func DemoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to demote organizer"})
+			return
+		}
+
+		if err := SetSessionCookie(w, userID, string(consts.RoleUser)); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to refresh session"})
 			return
 		}
 

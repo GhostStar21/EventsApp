@@ -9,6 +9,7 @@ const LoginPath = "/v1/login"
 const LogoutPath = "/v1/logout"
 const PromoteOrganizerPath = "/v1/promote-organizer"
 const DemoteOrganizerPath = "/v1/demote-organizer"
+const CSRFTokenPath = "/v1/csrf-token"
 
 type Role string
 

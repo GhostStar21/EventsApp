@@ -1,0 +1,233 @@
+.admin-page {
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #fdf2f8 0%, #f5f3ff 100%);
+  color: #2d1847;
+}
+
+.admin-link-button {
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  background: #7c3aed;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.admin-form-card input,
+.admin-form-card select,
+.admin-form-card textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.admin-form-card textarea {
+  min-height: 80px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.admin-list-card table td, .admin-list-card table th {
+  word-break: break-word;
+}
+
+.admin-list-card .action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+.admin-list-card .small-btn {
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: white;
+  color: #4b5563;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.admin-list-card .btn-edit {
+  border-color: #e9d5ff;
+  color: #6d28d9;
+}
+.admin-list-card .btn-delete {
+  background: #ef4444;
+  color: white;
+  border-color: transparent;
+}
+.admin-list-card .btn-approve {
+  background: #10b981;
+  color: white;
+}
+.admin-list-card .btn-reject {
+  background: #f97316;
+  color: white;
+}
+.admin-list-card .btn-suspend {
+  background: #ef4444;
+  color: white;
+}
+
+.advanced-actions .danger {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.admin-back-btn {
+  border: none;
+  background: #7c3aed;
+  color: white;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.admin-tabs button {
+  border: 1px solid #e9d5ff;
+  background: white;
+  color: #6d28d9;
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.admin-tabs button.active {
+  background: #2563eb;
+  color: white;
+  border-color: transparent;
+}
+
+.admin-message {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+}
+
+.admin-message.success {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.admin-message.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.admin-section {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 1.5rem;
+}
+
+.admin-list-card,
+.admin-form-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.admin-list-card table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.admin-list-card th,
+.admin-list-card td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.admin-list-card th {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.admin-form-card form {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-form-card input,
+.admin-form-card select,
+.admin-form-card textarea {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.admin-form-card label {
+  font-weight: 600;
+}
+
+.admin-form-card button {
+  border: none;
+  background: #2563eb;
+  color: white;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.admin-form-card button.danger {
+  background: #ef4444;
+}
+
+.form-row-two {
+  display: flex;
+  gap: 1rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+button.danger {
+  background: #ef4444;
+  color: white;
+}
+
+button.danger:hover {
+  opacity: 0.95;
+}
+
+button:hover {
+  opacity: 0.95;
+}

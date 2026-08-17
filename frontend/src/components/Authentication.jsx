@@ -8,6 +8,39 @@ import { useNavigate } from "react-router-dom";
 * @param {setUser} - A function parameter for the user being authenticated
 * @return {JSX Element} - An authentication UI (Login/Register) 
 */
+
+// CSRF Protection utility
+const getCsrfToken = () => {
+  // Try to get CSRF token from meta tag first
+  const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  if (metaToken) return metaToken;
+  
+  // Try to get from cookie
+  const cookie = document.cookie.split('; ').find(row => row.startsWith('XSRF-TOKEN='));
+  if (cookie) return cookie.split('=')[1];
+  
+  return '';
+};
+
+// Fetch a new CSRF token from the backend
+const fetchCSRFToken = async () => {
+  try {
+    const response = await fetch("http://localhost:8080/v1/csrf-token", {
+      method: "GET",
+      credentials: "include",
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.token;
+    }
+  } catch (error) {
+    console.warn("Could not fetch CSRF token:", error);
+  }
+  
+  return '';
+};
+
 function Authentication({ setUser }) {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(true);
@@ -34,12 +67,25 @@ function Authentication({ setUser }) {
     setIsErrorMessage(false);
 
     try {
+      // Fetch CSRF token before login
+      let csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        csrfToken = await fetchCSRFToken();
+      }
+      
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      
+      // Add CSRF token if available
+      if (csrfToken) {
+        headers["X-CSRF-TOKEN"] = csrfToken;
+      }
+      
       const response = await fetch("http://localhost:8080/v1/login", {
         method: "POST",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
@@ -85,11 +131,24 @@ function Authentication({ setUser }) {
     setIsErrorMessage(false);
 
     try {
+      // Fetch CSRF token before registration
+      let csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        csrfToken = await fetchCSRFToken();
+      }
+      
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      
+      // Add CSRF token if available
+      if (csrfToken) {
+        headers["X-CSRF-TOKEN"] = csrfToken;
+      }
+      
       const response = await fetch("http://localhost:8080/v1/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           name: registerData.username,
           email: registerData.email,

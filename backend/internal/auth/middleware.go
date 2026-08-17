@@ -28,6 +28,9 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		// Parse and verify the token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+                return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+        	}
 			return jwtSecret, nil
 		})
 
@@ -36,10 +39,34 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
+		claims, ok := token.Claims.(jwt.MapClaims)
 
-		userID := int(claims["userId"].(float64))
-		role := claims["role"].(string)
+		if !ok {
+			http.Error(w, "Invalid token claims format", http.StatusUnauthorized)
+			return
+		}
+
+		var userID int
+		if uidVal, ok := claims["userId"]; ok {
+			switch v := uidVal.(type) {
+			case float64:
+				userID = int(v)
+			case int:
+				userID = v
+			default:
+				http.Error(w, "Invalid userID type in token claims", http.StatusUnauthorized)
+				return
+			}
+		} else {
+			http.Error(w, "Missing userID in token claims", http.StatusUnauthorized)
+			return
+		}
+
+		role, ok := claims["role"].(string)
+		if !ok {
+			http.Error(w, "Invalid role type in token claims", http.StatusUnauthorized)
+			return
+		}
 
 		ctx := context.WithValue(r.Context(), "userID", userID)
 		ctx = context.WithValue(ctx, "role", role)

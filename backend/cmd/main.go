@@ -22,6 +22,8 @@ func main() {
 		log.Printf("No .env file loaded: %v", err)
 	}
 
+	auth.Initialize()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Println("$PORT has not been set. Default: 8080")
@@ -46,19 +48,23 @@ func main() {
 
 	log.Println("Successfully connected to database")
 
+	// Start CSRF token cleanup goroutine (runs every hour to remove expired tokens)
+	go auth.CleanupExpiredTokens()
+
 	// Initiate router
 	router := http.NewServeMux()
 
 	// Handle the various endpoints
+	router.HandleFunc(consts.CSRFTokenPath, auth.GetCSRFToken())
 	router.HandleFunc(consts.RegisterPath, auth.RegisterUser(db))
 	router.HandleFunc(consts.LoginPath, auth.LoginUser(db))
 	router.HandleFunc(consts.LogoutPath, auth.LogoutUser())
-	router.HandleFunc(consts.PromoteOrganizerPath, auth.AuthMiddleware(auth.PromoteOrganizer(db)))
-	router.HandleFunc(consts.DemoteOrganizerPath, auth.AuthMiddleware(auth.DemoteOrganizer(db)))
+	router.HandleFunc(consts.PromoteOrganizerPath, auth.AuthMiddleware(auth.CSRFMiddleware(auth.PromoteOrganizer(db))))
+	router.HandleFunc(consts.DemoteOrganizerPath, auth.AuthMiddleware(auth.CSRFMiddleware(auth.DemoteOrganizer(db))))
 	router.HandleFunc(consts.MePath, auth.AuthMiddleware(users.MeHandler))
-	router.HandleFunc(consts.EventsPath, auth.AuthMiddleware(events.EventsHandler))
+	router.HandleFunc(consts.EventsPath, auth.AuthMiddleware(auth.CSRFMiddleware(events.EventsHandler)))
 	router.HandleFunc(consts.UsersPath, auth.AuthMiddleware(users.UsersHandler))
-	router.HandleFunc(consts.OrganizersPath, organizers.OrganizersHandler)
+	router.HandleFunc(consts.OrganizersPath, auth.AuthMiddleware(organizers.OrganizersHandler))
 
 	log.Printf("Starting server on port %s\n", port)
 	if err := http.ListenAndServe(":"+port, api.EnableCORS(router)); err != nil {

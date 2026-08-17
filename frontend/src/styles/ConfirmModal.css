@@ -1,0 +1,22 @@
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.confirm-modal {
+  background: white;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  width: 420px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+}
+.confirm-modal h3 { margin: 0 0 0.5rem 0; }
+.confirm-modal p { margin: 0 0 1rem 0; color: #334155; }
+.confirm-modal input { width: 100%; padding: 0.6rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; }
+.confirm-actions { display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem }
+.confirm-actions .cancel { background: #f8fafc; border: 1px solid #cbd5e1; padding:0.5rem 0.75rem; border-radius:0.5rem }
+.confirm-actions .confirm { background: #7c3aed; color:white; border:none; padding:0.5rem 0.75rem; border-radius:0.5rem }
