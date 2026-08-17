@@ -16,12 +16,18 @@ import "../styles/Events.css";
 function Events({ user, onLogout, onUserReload }) {
 
   const [events, setEvents] = useState([]);
+  const [organizers, setOrganizers] = useState([]);
   const [organizer, setOrganizer] = useState(null);
   const [showEarlierEvents, setShowEarlierEvents] = useState(false);
+  const [showOrganizerFilter, setShowOrganizerFilter] = useState(false);
+  const [organizerSearchInput, setOrganizerSearchInput] = useState("");
+  const [organizerFilterQuery, setOrganizerFilterQuery] = useState("");
+  const [selectedOrganizer, setSelectedOrganizer] = useState("All organizers");
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchEvents();
+    fetchOrganizers();
   }, []);
 
   useEffect(() => {
@@ -85,6 +91,26 @@ function Events({ user, onLogout, onUserReload }) {
     }
   };
 
+  const fetchOrganizers = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/v1/organizers", {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch organizers.");
+      }
+
+      const data = await response.json();
+      const uniqueOrganizers = [...new Map((data || []).map((org) => [org.name, org])).values()].filter(
+        (org) => org && org.name
+      );
+      setOrganizers(uniqueOrganizers);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleDeleteEvent = async (eventId) => {
     try {
       const response = await fetch(`http://localhost:8080/v1/events/${eventId}`, {
@@ -111,15 +137,35 @@ function Events({ user, onLogout, onUserReload }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const upcomingEvents = events.filter((event) => {
-    const eventDate = new Date(event.event_date || event.date || event.eventDate || "");
-    return !Number.isNaN(eventDate.getTime()) && eventDate.getTime() >= today.getTime();
+  const filteredOrganizers = organizers.filter((org) => {
+    const name = org?.name || "";
+    return name.toLowerCase().includes(organizerFilterQuery.trim().toLowerCase());
   });
 
-  const earlierEvents = events.filter((event) => {
-    const eventDate = new Date(event.event_date || event.date || event.eventDate || "");
-    return Number.isNaN(eventDate.getTime()) || eventDate.getTime() < today.getTime();
-  });
+  const filterEventsByOrganizer = (eventList) => {
+    if (selectedOrganizer === "All organizers") {
+      return eventList;
+    }
+
+    return eventList.filter((event) => {
+      const eventOrganizer = event.organizer_name || event.organizerName || "";
+      return eventOrganizer === selectedOrganizer;
+    });
+  };
+
+  const upcomingEvents = filterEventsByOrganizer(
+    events.filter((event) => {
+      const eventDate = new Date(event.event_date || event.date || event.eventDate || "");
+      return !Number.isNaN(eventDate.getTime()) && eventDate.getTime() >= today.getTime();
+    })
+  );
+
+  const earlierEvents = filterEventsByOrganizer(
+    events.filter((event) => {
+      const eventDate = new Date(event.event_date || event.date || event.eventDate || "");
+      return Number.isNaN(eventDate.getTime()) || eventDate.getTime() < today.getTime();
+    })
+  );
 
   return (
     <div className="events-page">
@@ -148,16 +194,89 @@ function Events({ user, onLogout, onUserReload }) {
           />
     </div>
 
+      <div className="events-toolbar">
+        <div className="organizer-filter-wrapper">
+          <button
+            className="organizer-filter-toggle"
+            onClick={() => setShowOrganizerFilter((prev) => !prev)}
+            type="button"
+          >
+            {selectedOrganizer === "All organizers" ? "Filter by organizer" : `Organizer: ${selectedOrganizer}`}
+          </button>
+
+          {showOrganizerFilter && (
+            <div className="organizer-filter-panel">
+              <div className="organizer-filter-search">
+                <input
+                  type="text"
+                  value={organizerSearchInput}
+                  onChange={(event) => setOrganizerSearchInput(event.target.value)}
+                  placeholder="Search organizer"
+                  aria-label="Search organizer"
+                />
+                <button
+                  type="button"
+                  className="organizer-search-btn"
+                  onClick={() => setOrganizerFilterQuery(organizerSearchInput)}
+                >
+                  Search
+                </button>
+              </div>
+
+              <div className="organizer-filter-list">
+                <button
+                  type="button"
+                  className={selectedOrganizer === "All organizers" ? "organizer-option active" : "organizer-option"}
+                  onClick={() => {
+                    setSelectedOrganizer("All organizers");
+                    setShowOrganizerFilter(false);
+                  }}
+                >
+                  All organizers
+                </button>
+
+                {filteredOrganizers.length > 0 ? (
+                  filteredOrganizers.map((org) => (
+                    <button
+                      type="button"
+                      key={org.id || org.name}
+                      className={selectedOrganizer === org.name ? "organizer-option active" : "organizer-option"}
+                      onClick={() => {
+                        setSelectedOrganizer(org.name);
+                        setShowOrganizerFilter(false);
+                        setOrganizerSearchInput(org.name);
+                      }}
+                    >
+                      {org.name}
+                    </button>
+                  ))
+                ) : (
+                  <span className="no-organizer-results">No organizers found</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="event-grid">
-        {upcomingEvents.map((event) => (
-          <EventCard
-            key={event.id}
-            event={event}
-            user={user}
-            onEdit={handleEditEvent}
-            onDelete={handleDeleteEvent}
-          />
-        ))}
+        {upcomingEvents.length > 0 ? (
+          upcomingEvents.map((event) => (
+            <EventCard
+              key={event.id}
+              event={event}
+              user={user}
+              onEdit={handleEditEvent}
+              onDelete={handleDeleteEvent}
+            />
+          ))
+        ) : (
+          <p className="empty-event-message">
+            {selectedOrganizer === "All organizers"
+              ? "No upcoming events available."
+              : `No upcoming events for ${selectedOrganizer}.`}
+          </p>
+        )}
       </div>
 
       {earlierEvents.length > 0 && (
@@ -171,15 +290,23 @@ function Events({ user, onLogout, onUserReload }) {
 
           {showEarlierEvents && (
             <div className="event-grid earlier-events-grid">
-              {earlierEvents.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  user={user}
-                  onEdit={handleEditEvent}
-                  onDelete={handleDeleteEvent}
-                />
-              ))}
+              {earlierEvents.length > 0 ? (
+                earlierEvents.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    user={user}
+                    onEdit={handleEditEvent}
+                    onDelete={handleDeleteEvent}
+                  />
+                ))
+              ) : (
+                <p className="empty-event-message">
+                  {selectedOrganizer === "All organizers"
+                    ? "No earlier events available."
+                    : `No earlier events for ${selectedOrganizer}.`}
+                </p>
+              )}
             </div>
           )}
         </div>

@@ -21,6 +21,110 @@
   font-size: 2rem;
 }
 
+.events-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.organizer-filter-wrapper {
+  position: relative;
+}
+
+.organizer-filter-toggle {
+  padding: 0.8rem 1.2rem;
+  border: 1px solid #d8b4fe;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  color: #4c1d95;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.08);
+  transition: all 0.2s ease;
+}
+
+.organizer-filter-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(124, 58, 237, 0.12);
+}
+
+.organizer-filter-panel {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  left: 0;
+  width: min(360px, 80vw);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid #e9d5ff;
+  border-radius: 18px;
+  box-shadow: 0 18px 38px rgba(88, 28, 135, 0.14);
+  padding: 1rem;
+  z-index: 20;
+}
+
+.organizer-filter-search {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.organizer-filter-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #ddd6fe;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  background: #faf5ff;
+  color: #2d1847;
+}
+
+.organizer-filter-search input:focus {
+  outline: 2px solid rgba(124, 58, 237, 0.18);
+  border-color: #a78bfa;
+}
+
+.organizer-search-btn {
+  border: none;
+  border-radius: 10px;
+  background: #7c3aed;
+  color: white;
+  font-weight: 700;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+}
+
+.organizer-filter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.organizer-option {
+  border: 1px solid #ede9fe;
+  background: #f8f5ff;
+  text-align: left;
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  cursor: pointer;
+  color: #3d2363;
+  font-weight: 600;
+}
+
+.organizer-option.active {
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  color: white;
+  border-color: transparent;
+}
+
+.no-organizer-results {
+  color: #6b7280;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.25rem;
+}
+
 .event-grid {
   display: flex;
   flex-wrap: wrap;
@@ -64,4 +168,15 @@
 
 .earlier-events-grid {
   margin-top: 1rem;
+}
+
+.empty-event-message {
+  width: 100%;
+  padding: 1.5rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #5b3a8a;
+  font-weight: 600;
+  text-align: center;
+  border: 1px dashed #d8b4fe;
 }
