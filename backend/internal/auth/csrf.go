@@ -115,8 +115,8 @@ func SetCSRFCookie(w http.ResponseWriter, token string) {
 		Name:     CSRFCookieName,
 		Value:    token,
 		Path:     "/",
-		HttpOnly: false, // Must be false so JavaScript can read it for the meta tag
-		Secure:   false, // Set to true in production with HTTPS
+		HttpOnly: true, 
+		Secure:   true, 
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(TokenExpiration.Seconds()),
 	}
