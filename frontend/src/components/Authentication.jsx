@@ -1,6 +1,7 @@
 import "../styles/Authentication.css";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_URL } from "../config.js";
 
 /**
 * Handles the login and register pop up displayed for new users.
@@ -25,7 +26,7 @@ const getCsrfToken = () => {
 // Fetch a new CSRF token from the backend
 const fetchCSRFToken = async () => {
   try {
-    const response = await fetch("http://localhost:8080/v1/csrf-token", {
+    const response = await fetch(`${API_URL}/v1/csrf-token`, {
       method: "GET",
       credentials: "include",
     });
@@ -82,7 +83,7 @@ function Authentication({ setUser }) {
         headers["X-CSRF-TOKEN"] = csrfToken;
       }
       
-      const response = await fetch("http://localhost:8080/v1/login", {
+      const response = await fetch(`${API_URL}/v1/login`, {
         method: "POST",
         credentials: "include",
         headers,
@@ -98,7 +99,7 @@ function Authentication({ setUser }) {
       if (response.ok) {
         console.log("Login successful!");
 
-        const meResponse = await fetch("http://localhost:8080/v1/me", {
+        const meResponse = await fetch(`${API_URL}/v1/me`, {
           credentials: "include",
         });
 
@@ -146,7 +147,7 @@ function Authentication({ setUser }) {
         headers["X-CSRF-TOKEN"] = csrfToken;
       }
       
-      const response = await fetch("http://localhost:8080/v1/register", {
+      const response = await fetch(`${API_URL}/v1/register`, {
         method: "POST",
         headers,
         body: JSON.stringify({

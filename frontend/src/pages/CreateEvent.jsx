@@ -1,6 +1,7 @@
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "../styles/CreateEvent.css";
+import { API_URL } from "../config.js";
 
 /** 
  * Displays a form for creating or updating an event.
@@ -35,7 +36,7 @@ function CreateEvent() {
       if (state?.event) {
         populateForm(state.event);
       } else {
-        fetch(`http://localhost:8080/v1/events/${id}`, {
+        fetch(`${API_URL}/v1/events/${id}`, {
           credentials: "include",
         })
           .then((res) => (res.ok ? res.json() : Promise.reject("Event not found")))
@@ -91,7 +92,7 @@ function CreateEvent() {
     setIsErrorMessage(false);
     event.preventDefault();
 
-    const url = isEdit ? `http://localhost:8080/v1/events/${id}` : "http://localhost:8080/v1/events";
+    const url = isEdit ? `${API_URL}/v1/events/${id}` : `${API_URL}/v1/events`;
     const method = isEdit ? "PUT" : "POST";
 
     const formattedDate = eventData.event_date

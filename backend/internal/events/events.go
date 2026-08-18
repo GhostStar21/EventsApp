@@ -182,16 +182,24 @@ func listEvents(w http.ResponseWriter, r *http.Request) {
 		var e Events
 		var date time.Time
 		var tm time.Time
+		var description sql.NullString
+		var isRegistration sql.NullBool
 		var registrationLink sql.NullString
 		var orgID sql.NullInt32
 		var orgName sql.NullString
 
-		if err := rows.Scan(&e.Id, &e.Name, &e.IsExclusive, &date, &tm, &e.Location, &e.Description, &e.IsRegistration, &registrationLink, &orgID, &orgName); err != nil {
+		if err := rows.Scan(&e.Id, &e.Name, &e.IsExclusive, &date, &tm, &e.Location, &description, &isRegistration, &registrationLink, &orgID, &orgName); err != nil {
 			http.Error(w, "Failed to scan event", http.StatusInternalServerError)
 			return
 		}
 		e.Date = date
 		e.Time = tm
+		if description.Valid {
+			e.Description = description.String
+		}
+		if isRegistration.Valid {
+			e.IsRegistration = isRegistration.Bool
+		}
 		if registrationLink.Valid {
 			e.RegistrationLink = registrationLink.String
 		}
@@ -225,6 +233,8 @@ func getSingleEvent(w http.ResponseWriter, r *http.Request, id int) {
 	var e Events
 	var date time.Time
 	var tm time.Time
+	var description sql.NullString
+	var isRegistration sql.NullBool
 	var registrationLink sql.NullString
 	var orgID sql.NullInt32
 	var orgName sql.NullString
@@ -235,13 +245,19 @@ func getSingleEvent(w http.ResponseWriter, r *http.Request, id int) {
 		       (SELECT o.name FROM event_organizers eo JOIN organizers o ON eo.organizer_id = o.id WHERE eo.event_id = e.id ORDER BY eo.organizer_id LIMIT 1) AS organizer_name
 		FROM events e
 		WHERE e.id = $1
-	`, id).Scan(&e.Id, &e.Name, &e.IsExclusive, &date, &tm, &e.Location, &e.Description, &e.IsRegistration, &registrationLink, &orgID, &orgName)
+	`, id).Scan(&e.Id, &e.Name, &e.IsExclusive, &date, &tm, &e.Location, &description, &isRegistration, &registrationLink, &orgID, &orgName)
 	if err != nil {
 		http.Error(w, "Event not found", http.StatusNotFound)
 		return
 	}
 	e.Date = date
 	e.Time = tm
+	if description.Valid {
+		e.Description = description.String
+	}
+	if isRegistration.Valid {
+		e.IsRegistration = isRegistration.Bool
+	}
 	if registrationLink.Valid {
 		e.RegistrationLink = registrationLink.String
 	}
@@ -317,6 +333,20 @@ func postEvents(w http.ResponseWriter, r *http.Request) {
 		err := db.QueryRow(ctx, "SELECT organizer_id FROM organizer_member WHERE user_id=$1 ORDER BY organizer_id LIMIT 1", userID).Scan(&targetOrgID)
 		if err != nil && role != string(consts.RoleAdmin) {
 			http.Error(w, "No organizer associated with your account", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Check if the organizer is approved
+	if targetOrgID > 0 && role != string(consts.RoleAdmin) {
+		var isApproved string
+		err := db.QueryRow(ctx, "SELECT is_approved FROM organizers WHERE id=$1", targetOrgID).Scan(&isApproved)
+		if err != nil {
+			http.Error(w, "Organizer not found", http.StatusNotFound)
+			return
+		}
+		if isApproved != "true" && isApproved != "APPROVED" {
+			http.Error(w, "Your organizer has not been approved yet. Please wait for admin approval before creating events.", http.StatusForbidden)
 			return
 		}
 	}

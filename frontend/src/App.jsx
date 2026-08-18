@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Events from "./pages/Events.jsx"
 import CreateEvent from "./pages/CreateEvent.jsx"
 import Admin from "./pages/Admin.jsx"
+import { API_URL } from "./config.js";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -12,7 +13,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch("http://localhost:8080/v1/logout", {
+      await fetch(`${API_URL}/v1/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -24,7 +25,7 @@ function App() {
 
   const loadUser = async () => {
     try {
-      const response = await fetch("http://localhost:8080/v1/me", {
+      const response = await fetch(`${API_URL}/v1/me`, {
         credentials: "include",
       });
 

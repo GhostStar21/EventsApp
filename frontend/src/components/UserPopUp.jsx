@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "../styles/UserPopUp.css";
+import { API_URL } from "../config.js";
 
 /**
  * Showcases the User icon, presenting either the ability to switch to an organizer or create an organizer, 
@@ -31,7 +32,7 @@ const getCsrfToken = () => {
 // Fetch a new CSRF token from the backend (for authenticated users)
 const fetchCSRFToken = async () => {
   try {
-    const response = await fetch("http://localhost:8080/v1/csrf-token", {
+    const response = await fetch(`${API_URL}/v1/csrf-token`, {
       method: "GET",
       credentials: "include",
     });
@@ -124,7 +125,7 @@ function UserPopUp( {name,
         headers["X-CSRF-TOKEN"] = csrfToken;
       }
 
-      const response = await fetch("http://localhost:8080/v1/promote-organizer", {
+      const response = await fetch(`${API_URL}/v1/promote-organizer`, {
         method: "POST",
         credentials: "include",
         headers,
@@ -137,7 +138,7 @@ function UserPopUp( {name,
       }
 
       const organizerResponse = await fetch(
-        `http://localhost:8080/v1/organizers/${data.organizerId}`,
+        `${API_URL}/v1/organizers/${data.organizerId}`,
         { credentials: "include" }
       );
 
@@ -177,7 +178,7 @@ function UserPopUp( {name,
         headers["X-CSRF-TOKEN"] = csrfToken;
       }
 
-      const response = await fetch("http://localhost:8080/v1/promote-organizer", {
+      const response = await fetch(`${API_URL}/v1/promote-organizer`, {
         method: "POST",
         credentials: "include",
         headers,
@@ -195,7 +196,7 @@ function UserPopUp( {name,
       }
 
       const organizerResponse = await fetch(
-        `http://localhost:8080/v1/organizers/${data.organizerId}`,
+        `${API_URL}/v1/organizers/${data.organizerId}`,
         { credentials: "include" }
       );
 
@@ -229,7 +230,7 @@ function UserPopUp( {name,
         headers["X-CSRF-TOKEN"] = csrfToken;
       }
 
-      const response = await fetch("http://localhost:8080/v1/demote-organizer", {
+      const response = await fetch(`${API_URL}/v1/demote-organizer`, {
         method: "POST",
         credentials: "include",
         headers,
@@ -268,6 +269,17 @@ function UserPopUp( {name,
           <div className="user-popup-info">
             <p className="user-popup-name">{name || "User"}</p>
             <p className="user-popup-email">{email || "No email provided"}</p>
+            {isCurrentOrganizerMode && organizer && (
+              <div className="organizer-info">
+                <p className="organizer-name">{organizer.name || "Organizer"}</p>
+                <p className={`organizer-status ${(organizer.is_approved || organizer.isApproved || organizer.IsApproved || "PENDING").toLowerCase()}`}>
+                  Status: {organizer.is_approved || organizer.isApproved || organizer.IsApproved || "PENDING"}
+                </p>
+                {(organizer.is_approved || organizer.isApproved || organizer.IsApproved || "PENDING") !== "APPROVED" && (
+                  <p className="organizer-status-message">Waiting for admin approval to create events</p>
+                )}
+              </div>
+            )}
             {isCurrentOrganizerMode ? (
               <button className="user-popup-trigger" onClick={handleDemote}>
                 Switch to User

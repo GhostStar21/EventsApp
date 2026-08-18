@@ -170,3 +170,48 @@
 .organizer-status.success {
   color: #15803d;
 }
+
+.organizer-info {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  background: #f3f4f6;
+  border-radius: 10px;
+  border-left: 4px solid #7c3aed;
+}
+
+.organizer-name {
+  margin: 0 0 0.5rem;
+  font-weight: 700;
+  color: #111827;
+  font-size: 0.95rem;
+}
+
+.organizer-info .organizer-status {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.organizer-info .organizer-status.pending,
+.organizer-info .organizer-status.false {
+  color: #f59e0b;
+}
+
+.organizer-info .organizer-status.approved,
+.organizer-info .organizer-status.true {
+  color: #10b981;
+}
+
+.organizer-info .organizer-status.rejected {
+  color: #ef4444;
+}
+
+.organizer-info .organizer-status.suspended {
+  color: #8b5cf6;
+}
+
+.organizer-status-message {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #f59e0b;
+  font-weight: 500;
+}

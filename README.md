@@ -30,12 +30,17 @@ If no domain or IP address is provided, then the local URL is shown by vite i.e.
 ## Roles
 
 ### User
-- See all available events (or only subscribed organizers)
-- Register in events (future feature)
-- Subscribe/follow their favorite organizers
+- See all available events 
+- Register in events 
+- Be a member of an organizer.
 - For a user to create an event, they must register as an organizer (both personal and official) 
 
 ### Organizers
-- Create, read, update and delete their own events
-- The organizer can be controlled by multiple Users
+- Create, read, update and delete their own events.
+- The organizer can be controlled by multiple users.
+
+### Admin
+- See all registered users, events and organizers.
+- Approve, suspend or reject organizers.
+
 

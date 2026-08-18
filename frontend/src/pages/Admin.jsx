@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import "../styles/Admin.css";
 import ConfirmModal from "../components/ConfirmModal.jsx";
+import { API_URL } from "../config.js";
 
 const blankUser = { id: "", name: "", email: "", role: "USER", password: "" };
 const blankOrganizer = { id: "", name: "", orgNumber: "", type: "Personal" };
@@ -47,9 +48,9 @@ function Admin({ user, onUserReload }) {
   const loadAllData = async () => {
     try {
       const [usersRes, organizersRes, eventsRes] = await Promise.all([
-        fetch("http://localhost:8080/v1/users", { credentials: "include" }),
-        fetch("http://localhost:8080/v1/organizers", { credentials: "include" }),
-        fetch("http://localhost:8080/v1/events", { credentials: "include" }),
+        fetch(`${API_URL}/v1/users`, { credentials: "include" }),
+        fetch(`${API_URL}/v1/organizers`, { credentials: "include" }),
+        fetch(`${API_URL}/v1/events`, { credentials: "include" }),
       ]);
 
       if (!usersRes.ok || !organizersRes.ok || !eventsRes.ok) {
@@ -108,7 +109,7 @@ function Admin({ user, onUserReload }) {
     }
 
     const method = userForm.id ? "PUT" : "POST";
-    const url = userForm.id ? `http://localhost:8080/v1/users/${userForm.id}` : "http://localhost:8080/v1/users";
+    const url = userForm.id ? `${API_URL}/v1/users/${userForm.id}` : `${API_URL}/v1/users`;
 
     try {
       const response = await fetch(url, {
@@ -164,7 +165,7 @@ function Admin({ user, onUserReload }) {
       type: organizerForm.type,
     };
     const method = organizerForm.id ? "PUT" : "POST";
-    const url = organizerForm.id ? `http://localhost:8080/v1/organizers/${organizerForm.id}` : "http://localhost:8080/v1/organizers";
+    const url = organizerForm.id ? `${API_URL}/v1/organizers/${organizerForm.id}` : `${API_URL}/v1/organizers`;
 
     try {
       const response = await fetch(url, {
@@ -247,7 +248,7 @@ function Admin({ user, onUserReload }) {
     }
 
     const method = eventForm.id ? "PUT" : "POST";
-    const url = eventForm.id ? `http://localhost:8080/v1/events/${eventForm.id}` : "http://localhost:8080/v1/events";
+    const url = eventForm.id ? `${API_URL}/v1/events/${eventForm.id}` : `${API_URL}/v1/events`;
 
     try {
       const response = await fetch(url, {
@@ -314,7 +315,7 @@ function Admin({ user, onUserReload }) {
     try {
       if (!action) return;
       if (action.type === "deleteUser") {
-        const response = await fetch(`http://localhost:8080/v1/users/${action.id}`, { method: "DELETE", credentials: "include" });
+        const response = await fetch(`${API_URL}/v1/users/${action.id}`, { method: "DELETE", credentials: "include" });
         if (!response.ok) throw new Error("Failed to delete user");
         setMessage("User deleted.");
         await loadAllData();
@@ -322,7 +323,7 @@ function Admin({ user, onUserReload }) {
         return;
       }
       if (action.type === "deleteOrganizer") {
-        const response = await fetch(`http://localhost:8080/v1/organizers/${action.id}`, { method: "DELETE", credentials: "include" });
+        const response = await fetch(`${API_URL}/v1/organizers/${action.id}`, { method: "DELETE", credentials: "include" });
         if (!response.ok) throw new Error("Failed to delete organizer");
         setMessage("Organizer deleted.");
         await loadAllData();
@@ -337,7 +338,7 @@ function Admin({ user, onUserReload }) {
           type: org.type || "Personal",
           is_approved: status,
         };
-        const response = await fetch(`http://localhost:8080/v1/organizers/${org.id}`, {
+        const response = await fetch(`${API_URL}/v1/organizers/${org.id}`, {
           method: "PUT",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -350,7 +351,7 @@ function Admin({ user, onUserReload }) {
         return;
       }
       if (action.type === "deleteAll") {
-        const url = `http://localhost:8080/v1/${action.subtype}`;
+        const url = `${API_URL}/v1/${action.subtype}`;
         // Note: backend expects admin privileges; password check should be server-side.
         const response = await fetch(url, { method: "DELETE", credentials: "include" });
         if (!response.ok) throw new Error("Failed to delete");
@@ -359,7 +360,7 @@ function Admin({ user, onUserReload }) {
         return;
       }
       if (action.type === "deleteEvent") {
-        const response = await fetch(`http://localhost:8080/v1/events/${action.id}`, { method: "DELETE", credentials: "include" });
+        const response = await fetch(`${API_URL}/v1/events/${action.id}`, { method: "DELETE", credentials: "include" });
         if (!response.ok) throw new Error("Failed to delete event");
         setMessage("Event deleted.");
         await loadAllData();

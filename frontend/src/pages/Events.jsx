@@ -4,6 +4,7 @@ import EventCard from "../components/EventCard";
 import UserPopUp from "../components/UserPopUp.jsx";
 import AdminNav from "../components/AdminNav.jsx";
 import "../styles/Events.css";
+import { API_URL } from "../config.js";
 
 /** 
 * Events renders the main Events page, showcasing all available events
@@ -33,7 +34,7 @@ function Events({ user, onLogout, onUserReload }) {
   useEffect(() => {
     if (user?.role === "ORGANIZER" && user?.organizerId) {
       if (!organizer || organizer.id !== user.organizerId) {
-        fetch(`http://localhost:8080/v1/organizers/${user.organizerId}`, {
+        fetch(`${API_URL}/v1/organizers/${user.organizerId}`, {
           credentials: "include",
         })
           .then((res) => (res.ok ? res.json() : null))
@@ -50,7 +51,7 @@ function Events({ user, onLogout, onUserReload }) {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch("http://localhost:8080/v1/events", {
+      const response = await fetch(`${API_URL}/v1/events`, {
         credentials: "include",
       });
 
@@ -93,7 +94,7 @@ function Events({ user, onLogout, onUserReload }) {
 
   const fetchOrganizers = async () => {
     try {
-      const response = await fetch("http://localhost:8080/v1/organizers", {
+      const response = await fetch(`${API_URL}/v1/organizers`, {
         credentials: "include",
       });
 
@@ -113,7 +114,7 @@ function Events({ user, onLogout, onUserReload }) {
 
   const handleDeleteEvent = async (eventId) => {
     try {
-      const response = await fetch(`http://localhost:8080/v1/events/${eventId}`, {
+      const response = await fetch(`${API_URL}/v1/events/${eventId}`, {
         method: "DELETE",
         credentials: "include",
       });
