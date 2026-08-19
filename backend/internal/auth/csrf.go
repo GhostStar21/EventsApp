@@ -115,7 +115,7 @@ func SetCSRFCookie(w http.ResponseWriter, token string) {
 		Name:     CSRFCookieName,
 		Value:    token,
 		Path:     "/",
-		HttpOnly: true, 
+		HttpOnly: false, 
 		Secure:   true, 
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(TokenExpiration.Seconds()),
