@@ -26,21 +26,33 @@ If no domain or IP address is provided, then the local URL is shown by vite i.e.
 ## Features
 - Sign in or register an account
 - View all events returned by the backend
+- Register events as organizer
+- Register for events as users
+- CRUD rights as admin for users, organizers and events. 
 
 ## Roles
-
 ### User
 - See all available events 
 - Register in events 
 - Be a member of an organizer.
 - For a user to create an event, they must register as an organizer (both personal and official) 
 
+![User View](images/user-view.png)
+
 ### Organizers
 - Create, read, update and delete their own events.
 - The organizer can be controlled by multiple users.
 
+The organizer view is similar to the user view, except here the organizer can edit or delete the events they have created.
+![Organizer View](images/organizer-view.png)
+
+For an organizer to create an event, they have to fill in a form that can look like this:
+![Create Event View](images/create-events.png)
+
 ### Admin
 - See all registered users, events and organizers.
 - Approve, suspend or reject organizers.
+
+![Admin View](images/admin-view.png)
 
 
