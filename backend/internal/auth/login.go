@@ -40,14 +40,14 @@ func LoginUser(db *pgxpool.Pool) http.HandlerFunc {
 
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"message": "Invalid credentials"})
+			json.NewEncoder(w).Encode(map[string]string{"message": "Invalid e-mail"})
 			return
 		}
 
 		// Compares the hashed input with the hashed password in the database
 		if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)); err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"message": "Invalid credentials"})
+			json.NewEncoder(w).Encode(map[string]string{"message": "Invalid password"})
 			return
 		}
 
