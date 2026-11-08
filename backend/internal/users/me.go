@@ -52,6 +52,8 @@ func MeHandler(w http.ResponseWriter, r *http.Request) {
 		u.Role = consts.Role(roleStr)
 		u.OrganizerId = orgID
 		api.WriteJSON(w, u)
-	} 
-	http.Error(w, "Invalid HTTP Method sent", http.StatusMethodNotAllowed)
+	} else {
+		http.Error(w, "Invalid HTTP Method sent", http.StatusMethodNotAllowed)
+		return
+	}
 }
