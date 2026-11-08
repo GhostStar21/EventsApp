@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import "../styles/Admin.css";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import { API_URL } from "../config.js";
+import getCsrfToken from "../utils/csrf.js";
 
 const blankUser = { id: "", name: "", email: "", role: "USER", password: "" };
 const blankOrganizer = { id: "", name: "", orgNumber: "", type: "Personal" };
@@ -251,10 +252,14 @@ function Admin({ user, onUserReload }) {
     const url = eventForm.id ? `${API_URL}/v1/events/${eventForm.id}` : `${API_URL}/v1/events`;
 
     try {
+      const csrfToken = await getCsrfToken();
       const response = await fetch(url, {
         method,
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": csrfToken,
+        },
         body: JSON.stringify(payload),
       });
       const data = await response.json().catch(() => null);
@@ -353,14 +358,27 @@ function Admin({ user, onUserReload }) {
       if (action.type === "deleteAll") {
         const url = `${API_URL}/v1/${action.subtype}`;
         // Note: backend expects admin privileges; password check should be server-side.
-        const response = await fetch(url, { method: "DELETE", credentials: "include" });
+        const headers = {};
+        if (action.subtype === "events") {
+          headers["X-CSRF-TOKEN"] = await getCsrfToken();
+        }
+        const response = await fetch(url, {
+          method: "DELETE",
+          credentials: "include",
+          headers,
+        });
         if (!response.ok) throw new Error("Failed to delete");
         setMessage(`All ${action.subtype} deleted.`);
         await loadAllData();
         return;
       }
       if (action.type === "deleteEvent") {
-        const response = await fetch(`${API_URL}/v1/events/${action.id}`, { method: "DELETE", credentials: "include" });
+        const csrfToken = await getCsrfToken();
+        const response = await fetch(`${API_URL}/v1/events/${action.id}`, {
+          method: "DELETE",
+          credentials: "include",
+          headers: { "X-CSRF-TOKEN": csrfToken },
+        });
         if (!response.ok) throw new Error("Failed to delete event");
         setMessage("Event deleted.");
         await loadAllData();

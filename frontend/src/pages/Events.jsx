@@ -5,6 +5,7 @@ import UserPopUp from "../components/UserPopUp.jsx";
 import AdminNav from "../components/AdminNav.jsx";
 import "../styles/Events.css";
 import { API_URL } from "../config.js";
+import getCsrfToken from "../utils/csrf.js";
 
 /** 
 * Events renders the main Events page, showcasing all available events
@@ -114,9 +115,11 @@ function Events({ user, onLogout, onUserReload }) {
 
   const handleDeleteEvent = async (eventId) => {
     try {
+      const csrfToken = await getCsrfToken();
       const response = await fetch(`${API_URL}/v1/events/${eventId}`, {
         method: "DELETE",
         credentials: "include",
+        headers: { "X-CSRF-TOKEN": csrfToken },
       });
 
       if (!response.ok) {
