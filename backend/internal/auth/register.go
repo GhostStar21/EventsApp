@@ -115,7 +115,7 @@ func normalizeOrganizerType(value string) string {
 	return value
 }
 
-// RegisterOrganizer creates or links an organizer for the current authenticated user.
+// PromoteOrganizer creates or links an organizer for the current authenticated user.
 func PromoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -127,6 +127,8 @@ func PromoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		
+
 		payload, hasPayload, err := parseOrganizerRegistrationPayload(r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -135,6 +137,12 @@ func PromoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 		}
 
 		ctx := r.Context()
+		tx, err := db.Begin(ctx)
+		if err != nil {
+			http.Error(w, "Unable to start organizer registration", http.StatusInternalServerError)
+			return
+		}
+		defer tx.Rollback(ctx)
 		var organizerID int
 
 		if hasPayload {
@@ -144,7 +152,7 @@ func PromoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 				return
 			}
 
-			err = db.QueryRow(ctx, `
+			err = tx.QueryRow(ctx, `
 				INSERT INTO organizers (name, org_number, type)
 				VALUES ($1, $2, $3)
 				RETURNING id
@@ -155,7 +163,7 @@ func PromoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 				return
 			}
 
-			_, err = db.Exec(ctx, `
+			_, err = tx.Exec(ctx, `
 				INSERT INTO organizer_member (user_id, organizer_id)
 				VALUES ($1, $2)
 			`, userID, organizerID)
@@ -165,7 +173,7 @@ func PromoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 				return
 			}
 		} else {
-			err = db.QueryRow(ctx, `
+			err = tx.QueryRow(ctx, `
 				SELECT organizer_id
 				FROM organizer_member
 				WHERE user_id = $1
@@ -184,7 +192,7 @@ func PromoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 			}
 		}
 
-		_, err = db.Exec(ctx, `
+		_, err = tx.Exec(ctx, `
 			UPDATE users
 			SET role = $1
 			WHERE id = $2
@@ -195,12 +203,17 @@ func PromoteOrganizer(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		if err := tx.Commit(ctx); err != nil {
+			http.Error(w, "Unable to finish organizer registration", http.StatusInternalServerError)
+			return
+		}
+
 		if err := SetSessionCookie(w, userID, string(consts.RoleOrganizer)); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"message": "Unable to refresh session"})
 			return
 		}
-
+		log.Println("Promotion to Organizer successful!")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"message":     "Organizer created",

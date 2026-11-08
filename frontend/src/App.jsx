@@ -29,8 +29,13 @@ function App() {
         credentials: "include",
       });
 
+      if (response.status === 401) {
+        setUser(null);
+        return null;
+      }
+
       if (!response.ok) {
-        throw new Error("Unauthorized");
+        throw new Error(`Request failed: ${response.status}`);
       }
 
       const userData = await response.json();

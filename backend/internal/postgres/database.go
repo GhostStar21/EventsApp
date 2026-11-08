@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
+
 )
 
 const (
@@ -27,10 +29,17 @@ func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("%s or %s environment variable is required", envDatabaseURL, envSupabaseDBURL)
 	}
 
-	pool, err := pgxpool.New(ctx, url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pgx pool: %w", err)
-	}
+	config, err := pgxpool.ParseConfig(url)
+    if err != nil {
+        return nil, fmt.Errorf("failed to parse database config: %w", err)
+    }
+
+    config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+    pool, err := pgxpool.NewWithConfig(ctx, config)
+    if err != nil {
+        return nil, fmt.Errorf("failed to create pgx pool: %w", err)
+    }
 
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()

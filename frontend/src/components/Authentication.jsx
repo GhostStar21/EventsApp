@@ -94,7 +94,6 @@ function Authentication({ setUser }) {
       });
 
       const data = await response.json().catch(() => null);
-      console.log("Response status:", response.status);
 
       if (response.ok) {
         console.log("Login successful!");
