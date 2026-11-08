@@ -2,6 +2,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "../styles/CreateEvent.css";
 import { API_URL } from "../config.js";
+import getCsrfToken from "../utils/csrf.js";
 
 /** 
  * Displays a form for creating or updating an event.
@@ -104,11 +105,14 @@ function CreateEvent() {
       : "";
 
     try {
+      const token = await getCsrfToken();
+      
       const response = await fetch(url, {
         method,
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          "X-CSRF-TOKEN": token,
         },
         body: JSON.stringify({
           id: isEdit ? Number(id) : undefined,

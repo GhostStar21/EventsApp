@@ -2,6 +2,7 @@ import "../styles/Authentication.css";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config.js";
+import getCsrfToken from "../utils/csrf.js";
 
 /**
 * Handles the login and register pop up displayed for new users.
@@ -10,37 +11,7 @@ import { API_URL } from "../config.js";
 * @return {JSX Element} - An authentication UI (Login/Register) 
 */
 
-// CSRF Protection utility
-const getCsrfToken = () => {
-  // Try to get CSRF token from meta tag first
-  const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  if (metaToken) return metaToken;
-  
-  // Try to get from cookie
-  const cookie = document.cookie.split('; ').find(row => row.startsWith('XSRF-TOKEN='));
-  if (cookie) return cookie.split('=')[1];
-  
-  return '';
-};
 
-// Fetch a new CSRF token from the backend
-const fetchCSRFToken = async () => {
-  try {
-    const response = await fetch(`${API_URL}/v1/csrf-token`, {
-      method: "GET",
-      credentials: "include",
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      return data.token;
-    }
-  } catch (error) {
-    console.warn("Could not fetch CSRF token:", error);
-  }
-  
-  return '';
-};
 
 function Authentication({ setUser }) {
   const navigate = useNavigate();
@@ -69,19 +40,13 @@ function Authentication({ setUser }) {
 
     try {
       // Fetch CSRF token before login
-      let csrfToken = getCsrfToken();
-      if (!csrfToken) {
-        csrfToken = await fetchCSRFToken();
-      }
+      const csrfToken = await getCsrfToken();
       
       const headers = {
         "Content-Type": "application/json",
       };
       
-      // Add CSRF token if available
-      if (csrfToken) {
-        headers["X-CSRF-TOKEN"] = csrfToken;
-      }
+      headers["X-CSRF-TOKEN"] = csrfToken;
       
       const response = await fetch(`${API_URL}/v1/login`, {
         method: "POST",
@@ -132,19 +97,13 @@ function Authentication({ setUser }) {
 
     try {
       // Fetch CSRF token before registration
-      let csrfToken = getCsrfToken();
-      if (!csrfToken) {
-        csrfToken = await fetchCSRFToken();
-      }
+      const csrfToken = await getCsrfToken();
       
       const headers = {
         "Content-Type": "application/json",
       };
       
-      // Add CSRF token if available
-      if (csrfToken) {
-        headers["X-CSRF-TOKEN"] = csrfToken;
-      }
+      headers["X-CSRF-TOKEN"] = csrfToken;
       
       const response = await fetch(`${API_URL}/v1/register`, {
         method: "POST",
@@ -278,3 +237,4 @@ function Authentication({ setUser }) {
 }
 
 export default Authentication;
+

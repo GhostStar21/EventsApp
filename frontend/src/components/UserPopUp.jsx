@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "../styles/UserPopUp.css";
 import { API_URL } from "../config.js";
+import getCsrfToken from "../utils/csrf.js";
 
 /**
  * Showcases the User icon, presenting either the ability to switch to an organizer or create an organizer, 
@@ -16,37 +17,6 @@ import { API_URL } from "../config.js";
  * @returns 
  */
 
-// CSRF Protection utility
-const getCsrfToken = () => {
-  // Try to get CSRF token from meta tag first
-  const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  if (metaToken) return metaToken;
-  
-  // Try to get from cookie
-  const cookie = document.cookie.split('; ').find(row => row.startsWith('XSRF-TOKEN='));
-  if (cookie) return cookie.split('=')[1];
-  
-  return '';
-};
-
-// Fetch a new CSRF token from the backend (for authenticated users)
-const fetchCSRFToken = async () => {
-  try {
-    const response = await fetch(`${API_URL}/v1/csrf-token`, {
-      method: "GET",
-      credentials: "include",
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      return data.token;
-    }
-  } catch (error) {
-    console.warn("Could not fetch CSRF token:", error);
-  }
-  
-  return '';
-};
 
 function UserPopUp( {name,
   email,
@@ -113,17 +83,12 @@ function UserPopUp( {name,
 
     try {
       // Fetch fresh CSRF token
-      let csrfToken = getCsrfToken();
-      if (!csrfToken) {
-        csrfToken = await fetchCSRFToken();
-      }
+      const csrfToken = await getCsrfToken();
       
       const headers = {};
       
       // Add CSRF token if available
-      if (csrfToken) {
-        headers["X-CSRF-TOKEN"] = csrfToken;
-      }
+      headers["X-CSRF-TOKEN"] = csrfToken;
 
       const response = await fetch(`${API_URL}/v1/promote-organizer`, {
         method: "POST",
@@ -164,19 +129,14 @@ function UserPopUp( {name,
 
     try {
       // Fetch fresh CSRF token
-      let csrfToken = getCsrfToken();
-      if (!csrfToken) {
-        csrfToken = await fetchCSRFToken();
-      }
+      const csrfToken = await getCsrfToken();
       
       const headers = {
         "Content-Type": "application/json",
       };
       
       // Add CSRF token if available
-      if (csrfToken) {
-        headers["X-CSRF-TOKEN"] = csrfToken;
-      }
+      headers["X-CSRF-TOKEN"] = csrfToken;
 
       const response = await fetch(`${API_URL}/v1/promote-organizer`, {
         method: "POST",
@@ -218,17 +178,12 @@ function UserPopUp( {name,
   const handleDemote = async () => {
     try {
       // Fetch fresh CSRF token
-      let csrfToken = getCsrfToken();
-      if (!csrfToken) {
-        csrfToken = await fetchCSRFToken();
-      }
+      const csrfToken = await getCsrfToken();
       
       const headers = {};
       
       // Add CSRF token if available
-      if (csrfToken) {
-        headers["X-CSRF-TOKEN"] = csrfToken;
-      }
+      headers["X-CSRF-TOKEN"] = csrfToken;
 
       const response = await fetch(`${API_URL}/v1/demote-organizer`, {
         method: "POST",
